@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlusCircle, Edit, Trash2, Sparkles, GripVertical, MoreVertical } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PlusCircle, Edit, Trash2, Sparkles, GripVertical, MoreVertical, Users, Shield } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -24,9 +26,20 @@ interface Product {
   stock: number;
 }
 
+interface UserProfile {
+  id: string;
+  user_id: string;
+  email: string;
+  role: 'user' | 'admin' | 'super_admin';
+  created_at: string;
+}
+
 const Admin = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [generatingDescription, setGeneratingDescription] = useState(false);
@@ -48,9 +61,76 @@ const Admin = () => {
 
   useEffect(() => {
     if (user) {
-      fetchProducts();
+      checkUserRole();
     }
   }, [user]);
+
+  const checkUserRole = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user role:', error);
+        navigate('/');
+        return;
+      }
+
+      if (!data || !['admin', 'super_admin'].includes(data.role)) {
+        toast.error('Access denied. Admin privileges required.');
+        navigate('/');
+        return;
+      }
+
+      setUserRole(data.role);
+      fetchProducts();
+      if (data.role === 'super_admin') {
+        fetchUsers();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      navigate('/');
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching users:', error);
+        toast.error('Failed to fetch users');
+      } else {
+        setUsers(data || []);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('An error occurred while fetching users');
+    }
+  };
+
+  const updateUserRole = async (userId: string, newRole: 'user' | 'admin' | 'super_admin') => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      toast.success('User role updated successfully');
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      toast.error('Failed to update user role');
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -325,9 +405,29 @@ const Admin = () => {
           <p className="text-muted-foreground text-lg">
             Manage your products with AI-powered descriptions
           </p>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="outline" className="capitalize">
+              {userRole?.replace('_', ' ')}
+            </Badge>
+          </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-8">
+        <Tabs defaultValue="products" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="products" className="flex items-center gap-2">
+              <PlusCircle className="h-4 w-4" />
+              Products
+            </TabsTrigger>
+            {userRole === 'super_admin' && (
+              <TabsTrigger value="users" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                User Management
+              </TabsTrigger>
+            )}
+          </TabsList>
+
+          <TabsContent value="products" className="mt-6">
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-8">
           <div>
             <h2 className="text-2xl font-bold">Manage Products</h2>
             <p className="text-muted-foreground">View and manage your product inventory</p>
@@ -683,6 +783,66 @@ const Admin = () => {
             </Card>
           ))}
         </div>
+          </TabsContent>
+
+          {userRole === 'super_admin' && (
+            <TabsContent value="users" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    User Role Management
+                  </CardTitle>
+                  <CardDescription>
+                    Manage user roles and permissions. Only super admins can modify user roles.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {users.map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium">{user.email}</div>
+                          <div className="text-sm text-muted-foreground">
+                            User ID: {user.user_id.slice(0, 8)}...
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Created: {new Date(user.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge 
+                            variant={user.role === 'super_admin' ? 'default' : user.role === 'admin' ? 'secondary' : 'outline'}
+                            className="capitalize"
+                          >
+                            {user.role.replace('_', ' ')}
+                          </Badge>
+                          {user.user_id !== user.id && ( // Don't allow super admin to change their own role
+                            <Select
+                              value={user.role}
+                              onValueChange={(newRole: 'user' | 'admin' | 'super_admin') => 
+                                updateUserRole(user.user_id, newRole)
+                              }
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="user">User</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="super_admin">Super Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
 
       {/* Image Preview Dialog */}
