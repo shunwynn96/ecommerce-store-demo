@@ -58,7 +58,6 @@ const Admin = () => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [imageDialogSrc, setImageDialogSrc] = useState('');
-  const [creatingDemoAccounts, setCreatingDemoAccounts] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -135,55 +134,51 @@ const Admin = () => {
   };
 
   const createDemoAccounts = async () => {
-    if (creatingDemoAccounts) return;
-    
-    setCreatingDemoAccounts(true);
-    const demoAccounts = [
-      { email: 'demo1@example.com', password: 'demo123456' },
-      { email: 'demo2@example.com', password: 'demo123456' },
-      { email: 'demo3@example.com', password: 'demo123456' },
-      { email: 'demo4@example.com', password: 'demo123456' },
-      { email: 'demo5@example.com', password: 'demo123456' },
-    ];
+    try {
+      const demoAccounts = [
+        { email: 'demo1@example.com', password: 'demo123' },
+        { email: 'demo2@example.com', password: 'demo123' },
+        { email: 'demo3@example.com', password: 'demo123' },
+        { email: 'demo4@example.com', password: 'demo123' },
+        { email: 'demo5@example.com', password: 'demo123' },
+      ];
 
-    let successCount = 0;
-    let errorCount = 0;
+      for (const account of demoAccounts) {
+        // Check if account already exists
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('email', account.email)
+          .single();
 
-    for (const account of demoAccounts) {
-      try {
-        const { error } = await supabase.auth.signUp({
+        if (existingProfile) {
+          console.log(`Demo account ${account.email} already exists`);
+          continue;
+        }
+
+        // Create the auth user
+        const { data: authData, error: authError } = await supabase.auth.signUp({
           email: account.email,
           password: account.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`
+            emailRedirectTo: undefined, // Skip email confirmation
           }
         });
 
-        if (error) {
-          if (error.message.includes('already registered')) {
-            console.log(`User ${account.email} already exists`);
-          } else {
-            throw error;
-          }
-        } else {
-          successCount++;
+        if (authError) {
+          console.error(`Error creating demo account ${account.email}:`, authError);
+          continue;
         }
-      } catch (error) {
-        console.error(`Failed to create account for ${account.email}:`, error);
-        errorCount++;
+
+        console.log(`Created demo account: ${account.email}`);
       }
-    }
 
-    if (successCount > 0) {
-      toast.success(`Created ${successCount} demo accounts successfully!`);
+      toast.success('Demo accounts created successfully! Emails: demo1-demo5@example.com, Password: demo123');
+      fetchUsers();
+    } catch (error) {
+      console.error('Error creating demo accounts:', error);
+      toast.error('Failed to create demo accounts');
     }
-    if (errorCount > 0) {
-      toast.error(`Failed to create ${errorCount} accounts`);
-    }
-
-    setCreatingDemoAccounts(false);
-    // Refresh the users list
-    fetchUsers();
   };
 
   const fetchProducts = async () => {
@@ -846,28 +841,18 @@ const Admin = () => {
 
           {userRole === 'super_admin' && (
             <TabsContent value="users" className="mt-6">
-              {/* Demo Account Creation */}
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <PlusCircle className="h-5 w-5" />
+              <div className="mb-6">
+                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold">User Management</h2>
+                    <p className="text-muted-foreground">Manage user accounts and roles</p>
+                  </div>
+                  <Button onClick={createDemoAccounts} className="flex items-center gap-2 w-full lg:w-auto">
+                    <Users className="h-4 w-4" />
                     Create Demo Accounts
-                  </CardTitle>
-                  <CardDescription>
-                    Quickly create demo user accounts for testing
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    onClick={createDemoAccounts} 
-                    className="w-full"
-                    disabled={creatingDemoAccounts}
-                  >
-                    {creatingDemoAccounts ? 'Creating Demo Accounts...' : 'Create 5 Demo User Accounts'}
                   </Button>
-                </CardContent>
-              </Card>
-
+                </div>
+              </div>
               <div className="grid gap-6 md:grid-cols-2">
                 {/* Regular Users */}
                 <Card>
