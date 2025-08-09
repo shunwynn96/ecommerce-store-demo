@@ -413,16 +413,16 @@ const Admin = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="products" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 bg-muted p-1 rounded-lg h-auto">
-            <TabsTrigger 
-              value="products" 
-              className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md py-3 px-4 font-medium transition-all"
-            >
-              <PlusCircle className="h-4 w-4" />
-              Products
-            </TabsTrigger>
-            {userRole === 'super_admin' && (
+        {userRole === 'super_admin' ? (
+          <Tabs defaultValue="products" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-muted p-1 rounded-lg h-auto">
+              <TabsTrigger 
+                value="products" 
+                className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md py-3 px-4 font-medium transition-all"
+              >
+                <PlusCircle className="h-4 w-4" />
+                Products
+              </TabsTrigger>
               <TabsTrigger 
                 value="users" 
                 className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md py-3 px-4 font-medium transition-all"
@@ -430,10 +430,9 @@ const Admin = () => {
                 <Users className="h-4 w-4" />
                 User Management
               </TabsTrigger>
-            )}
-          </TabsList>
+            </TabsList>
 
-          <TabsContent value="products" className="mt-6">
+            <TabsContent value="products" className="mt-6">
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-8">
           <div>
             <h2 className="text-2xl font-bold">Manage Products</h2>
@@ -850,6 +849,297 @@ const Admin = () => {
             </TabsContent>
           )}
         </Tabs>
+        ) : (
+          // For regular admins, show products directly without tabs
+          <div className="mt-6">
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-8">
+              <div>
+                <h2 className="text-2xl font-bold">Manage Products</h2>
+                <p className="text-muted-foreground">View and manage your product inventory</p>
+              </div>
+              <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 w-full lg:w-auto">
+                    <PlusCircle className="h-4 w-4" />
+                    Add Product
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingProduct ? 'Edit Product' : 'Add New Product'}
+                    </DialogTitle>
+                    <DialogDescription>
+                      Create or edit products with AI-generated descriptions
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div>
+                      <Label htmlFor="name">Product Name *</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="Enter product name"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="features">Key Features (for AI description)</Label>
+                      <Input
+                        id="features"
+                        value={formData.features}
+                        onChange={(e) => setFormData(prev => ({ ...prev, features: e.target.value }))}
+                        placeholder="e.g., Wireless, Noise Cancelling, 20 hours battery"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label htmlFor="description">Description</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={generateDescription}
+                          disabled={generatingDescription || !formData.name}
+                        >
+                          <Sparkles className="h-4 w-4 mr-1" />
+                          {generatingDescription ? 'Generating...' : 'Generate with AI'}
+                        </Button>
+                      </div>
+                      <Textarea
+                        id="description"
+                        value={formData.description}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Product description will appear here..."
+                        rows={4}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="price">Price *</Label>
+                        <Input
+                          id="price"
+                          type="number"
+                          step="0.01"
+                          value={formData.price}
+                          onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                          placeholder="0.00"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="stock">Stock Quantity</Label>
+                        <Input
+                          id="stock"
+                          type="number"
+                          value={formData.stock}
+                          onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="image_url">Main Image URL</Label>
+                      <Input
+                        id="image_url"
+                        value={formData.image_url}
+                        onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
+                        placeholder="https://example.com/image.jpg"
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Additional Images</Label>
+                      <div className="space-y-3 mt-2">
+                        {additionalImages.map((imageUrl, index) => (
+                          <div
+                            key={index}
+                            className={`flex gap-2 items-center p-3 rounded-lg border transition-all duration-200 ${
+                              dragOverIndex === index ? 'border-primary bg-primary/10 scale-105' : 'border-border bg-background'
+                            } ${draggedIndex === index ? 'opacity-50' : ''}`}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, index)}
+                            onDragEnter={(e) => handleDragEnter(e, index)}
+                            onDragLeave={handleDragLeave}
+                            onDragOver={handleDragOver}
+                            onDragEnd={handleDragEnd}
+                            onDrop={(e) => handleDrop(e, index)}
+                          >
+                            <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
+                            <div className="flex-1 flex gap-2">
+                              <Input
+                                value={imageUrl}
+                                onChange={(e) => updateImageInput(index, e.target.value)}
+                                placeholder={`Additional image ${index + 1} URL`}
+                                className="flex-1"
+                              />
+                              {imageUrl && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setImageDialogSrc(imageUrl)}
+                                  className="px-2"
+                                >
+                                  <img
+                                    src={imageUrl}
+                                    alt={`Preview ${index + 1}`}
+                                    className="w-8 h-8 object-cover rounded"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                    }}
+                                  />
+                                </Button>
+                              )}
+                            </div>
+                            {additionalImages.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeImageInput(index)}
+                                className="px-2 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={addImageInput}
+                          className="w-full"
+                        >
+                          <PlusCircle className="h-4 w-4 mr-2" />
+                          Add Another Image
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-4 border-t">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancel}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit">
+                        {editingProduct ? 'Update Product' : 'Create Product'}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="grid gap-6">
+              {products.map((product) => (
+                <Card key={product.id} className="transition-all duration-200 hover:shadow-md">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <CardTitle className="text-xl">{product.name}</CardTitle>
+                        <CardDescription className="text-base leading-relaxed">
+                          {product.description || 'No description available'}
+                        </CardDescription>
+                        {product.images && product.images.length > 0 && (
+                          <div className="flex gap-2 mt-3">
+                            {product.images.map((image, index) => (
+                              <Button
+                                key={index}
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setImageDialogSrc(image)}
+                                className="p-1 h-auto"
+                              >
+                                <img
+                                  src={image}
+                                  alt={`${product.name} ${index + 1}`}
+                                  className="w-12 h-12 object-cover rounded border"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
+                                />
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(product)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteClick(product.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Product</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete "{product.name}"? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleDeleteConfirm}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete Product
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-4">
+                      <Badge variant="outline" className="text-lg font-semibold">
+                        ${product.price}
+                      </Badge>
+                      <Badge variant={product.stock > 0 ? "default" : "secondary"}>
+                        {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                      </Badge>
+                      {product.image_url && (
+                        <div className="ml-auto">
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="w-16 h-16 object-cover rounded"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Image Preview Dialog */}
