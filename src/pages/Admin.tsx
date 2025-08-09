@@ -58,6 +58,7 @@ const Admin = () => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [imageDialogSrc, setImageDialogSrc] = useState('');
+  const [creatingDemoAccounts, setCreatingDemoAccounts] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -131,6 +132,58 @@ const Admin = () => {
       console.error('Error updating user role:', error);
       toast.error('Failed to update user role');
     }
+  };
+
+  const createDemoAccounts = async () => {
+    if (creatingDemoAccounts) return;
+    
+    setCreatingDemoAccounts(true);
+    const demoAccounts = [
+      { email: 'demo1@example.com', password: 'demo123456' },
+      { email: 'demo2@example.com', password: 'demo123456' },
+      { email: 'demo3@example.com', password: 'demo123456' },
+      { email: 'demo4@example.com', password: 'demo123456' },
+      { email: 'demo5@example.com', password: 'demo123456' },
+    ];
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const account of demoAccounts) {
+      try {
+        const { error } = await supabase.auth.signUp({
+          email: account.email,
+          password: account.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`
+          }
+        });
+
+        if (error) {
+          if (error.message.includes('already registered')) {
+            console.log(`User ${account.email} already exists`);
+          } else {
+            throw error;
+          }
+        } else {
+          successCount++;
+        }
+      } catch (error) {
+        console.error(`Failed to create account for ${account.email}:`, error);
+        errorCount++;
+      }
+    }
+
+    if (successCount > 0) {
+      toast.success(`Created ${successCount} demo accounts successfully!`);
+    }
+    if (errorCount > 0) {
+      toast.error(`Failed to create ${errorCount} accounts`);
+    }
+
+    setCreatingDemoAccounts(false);
+    // Refresh the users list
+    fetchUsers();
   };
 
   const fetchProducts = async () => {
@@ -793,37 +846,57 @@ const Admin = () => {
 
           {userRole === 'super_admin' && (
             <TabsContent value="users" className="mt-6">
-              <Card>
+              {/* Demo Account Creation */}
+              <Card className="mb-6">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    User Role Management
+                    <PlusCircle className="h-5 w-5" />
+                    Create Demo Accounts
                   </CardTitle>
                   <CardDescription>
-                    Manage user roles and permissions. Only super admins can modify user roles.
+                    Quickly create demo user accounts for testing
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {users.map((user) => (
-                      <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="font-medium">{user.email}</div>
-                          <div className="text-sm text-muted-foreground">
-                            User ID: {user.user_id.slice(0, 8)}...
+                  <Button 
+                    onClick={createDemoAccounts} 
+                    className="w-full"
+                    disabled={creatingDemoAccounts}
+                  >
+                    {creatingDemoAccounts ? 'Creating Demo Accounts...' : 'Create 5 Demo User Accounts'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Regular Users */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Users
+                    </CardTitle>
+                    <CardDescription>
+                      Regular user accounts
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {users.filter(user => user.role === 'user').map((user) => (
+                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="font-medium">{user.email}</div>
+                            <div className="text-sm text-muted-foreground">
+                              User ID: {user.user_id.slice(0, 8)}...
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Created: {new Date(user.created_at).toLocaleDateString()}
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            Created: {new Date(user.created_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Badge 
-                            variant={user.role === 'super_admin' ? 'default' : user.role === 'admin' ? 'secondary' : 'outline'}
-                            className="capitalize"
-                          >
-                            {user.role.replace('_', ' ')}
-                          </Badge>
-                          {user.user_id !== user?.id && ( // Don't allow current user to change their own role
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline" className="capitalize">
+                              {user.role.replace('_', ' ')}
+                            </Badge>
                             <Select
                               value={user.role}
                               onValueChange={(newRole: 'user' | 'admin' | 'super_admin') => 
@@ -839,13 +912,74 @@ const Admin = () => {
                                 <SelectItem value="super_admin">Super Admin</SelectItem>
                               </SelectContent>
                             </Select>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      ))}
+                      {users.filter(user => user.role === 'user').length === 0 && (
+                        <p className="text-muted-foreground text-center py-4">No regular users found</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Admin Users */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="h-5 w-5" />
+                      Administrators
+                    </CardTitle>
+                    <CardDescription>
+                      Admin and super admin accounts
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {users.filter(user => user.role === 'admin' || user.role === 'super_admin').map((user) => (
+                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="font-medium">{user.email}</div>
+                            <div className="text-sm text-muted-foreground">
+                              User ID: {user.user_id.slice(0, 8)}...
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Created: {new Date(user.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Badge 
+                              variant={user.role === 'super_admin' ? 'default' : 'secondary'}
+                              className="capitalize"
+                            >
+                              {user.role.replace('_', ' ')}
+                            </Badge>
+                            {user.user_id !== user?.id && ( // Don't allow current user to change their own role
+                              <Select
+                                value={user.role}
+                                onValueChange={(newRole: 'user' | 'admin' | 'super_admin') => 
+                                  updateUserRole(user.user_id, newRole)
+                                }
+                              >
+                                <SelectTrigger className="w-32">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="user">User</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {users.filter(user => user.role === 'admin' || user.role === 'super_admin').length === 0 && (
+                        <p className="text-muted-foreground text-center py-4">No administrators found</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           )}
         </Tabs>
