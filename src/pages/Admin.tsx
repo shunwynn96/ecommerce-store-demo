@@ -107,6 +107,7 @@ const Admin = () => {
         console.error('Error fetching users:', error);
         toast.error('Failed to fetch users');
       } else {
+        console.log('Fetched users:', data); // Debug log
         setUsers(data || []);
       }
     } catch (error) {
@@ -413,13 +414,19 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="products" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="products" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-2 bg-muted p-1 rounded-lg h-auto">
+            <TabsTrigger 
+              value="products" 
+              className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md py-3 px-4 font-medium transition-all"
+            >
               <PlusCircle className="h-4 w-4" />
               Products
             </TabsTrigger>
             {userRole === 'super_admin' && (
-              <TabsTrigger value="users" className="flex items-center gap-2">
+              <TabsTrigger 
+                value="users" 
+                className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md py-3 px-4 font-medium transition-all"
+              >
                 <Users className="h-4 w-4" />
                 User Management
               </TabsTrigger>
@@ -817,7 +824,7 @@ const Admin = () => {
                           >
                             {user.role.replace('_', ' ')}
                           </Badge>
-                          {user.user_id !== user.id && ( // Don't allow super admin to change their own role
+                          {user.user_id !== user?.id && ( // Don't allow current user to change their own role
                             <Select
                               value={user.role}
                               onValueChange={(newRole: 'user' | 'admin' | 'super_admin') => 

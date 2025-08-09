@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -11,6 +12,33 @@ const Navbar = () => {
   const { user, signOut } = useAuth();
   const { totalItems } = useCart();
   const [isOpen, setIsOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserRole();
+    } else {
+      setUserRole(null);
+    }
+  }, [user]);
+
+  const fetchUserRole = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (!error && data) {
+        setUserRole(data.role);
+      }
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+    }
+  };
+
+  const isAdminUser = userRole === 'admin' || userRole === 'super_admin';
 
   return (
     <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -59,12 +87,14 @@ const Navbar = () => {
             {/* Desktop User Menu */}
             {user ? (
               <div className="hidden md:flex items-center space-x-4">
-                <Link to="/admin">
-                  <Button variant="ghost" size="sm">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Admin
-                  </Button>
-                </Link>
+                {isAdminUser && (
+                  <Link to="/admin">
+                    <Button variant="ghost" size="sm">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Admin
+                    </Button>
+                  </Link>
+                )}
                 <span className="text-sm text-muted-foreground hidden lg:block">
                   Welcome, {user.email}
                 </span>
@@ -119,14 +149,16 @@ const Navbar = () => {
                         <p className="text-sm text-muted-foreground mb-4">
                           Welcome, {user.email}
                         </p>
-                        <Link 
-                          to="/admin" 
-                          onClick={() => setIsOpen(false)}
-                          className="flex items-center text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-                        >
-                          <Settings className="h-5 w-5 mr-3" />
-                          Admin
-                        </Link>
+                        {isAdminUser && (
+                          <Link 
+                            to="/admin" 
+                            onClick={() => setIsOpen(false)}
+                            className="flex items-center text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                          >
+                            <Settings className="h-5 w-5 mr-3" />
+                            Admin
+                          </Link>
+                        )}
                         <button
                           onClick={() => {
                             signOut();
