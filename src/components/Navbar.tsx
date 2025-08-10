@@ -110,6 +110,12 @@ const Navbar = () => {
               </div>
             ) : (
               <div className="hidden md:flex items-center space-x-2">
+                <Link to="/admin">
+                  <Button variant="ghost" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Demo Admin
+                  </Button>
+                </Link>
                 <Link to="/auth">
                   <Button variant="ghost" size="sm">
                     <User className="h-4 w-4 mr-2" />
@@ -173,6 +179,14 @@ const Navbar = () => {
                     </>
                   ) : (
                     <div className="border-t pt-4 mt-4">
+                      <Link 
+                        to="/admin" 
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                      >
+                        <Settings className="h-5 w-5 mr-3" />
+                        Demo Admin
+                      </Link>
                       <Link 
                         to="/auth" 
                         onClick={() => setIsOpen(false)}

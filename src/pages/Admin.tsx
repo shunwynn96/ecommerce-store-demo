@@ -64,8 +64,15 @@ const Admin = () => {
   const [imageDialogSrc, setImageDialogSrc] = useState('');
 
   useEffect(() => {
+    // Always load products for demo purposes
+    fetchProducts();
+    fetchUsers(); // Always fetch users for demo
+    
     if (user) {
       checkUserRole();
+    } else {
+      // For demo purposes, set loading to false even without auth
+      setLoading(false);
     }
   }, [user]);
 
@@ -79,24 +86,19 @@ const Admin = () => {
 
       if (error) {
         console.error('Error fetching user role:', error);
-        navigate('/');
+        setUserRole('demo'); // Set demo role instead of redirecting
         return;
       }
 
       if (!data || !['admin', 'super_admin'].includes(data.role)) {
-        toast.error('Access denied. Admin privileges required.');
-        navigate('/');
+        setUserRole('demo'); // Set demo role instead of redirecting
         return;
       }
 
       setUserRole(data.role);
-      fetchProducts();
-      if (data.role === 'super_admin') {
-        fetchUsers();
-      }
     } catch (error) {
       console.error('Error:', error);
-      navigate('/');
+      setUserRole('demo'); // Set demo role instead of redirecting
     }
   };
 
@@ -161,6 +163,12 @@ const Admin = () => {
   };
 
   const updateUserRole = async (userId: string, newRole: 'user' | 'admin' | 'super_admin') => {
+    // Prevent edits in demo mode
+    if (!user || userRole === 'demo') {
+      toast.error('Demo mode: Editing is disabled. Please log in as an admin to make changes.');
+      return;
+    }
+    
     // Prevent updating demo users
     if (userId.startsWith('demo-user-')) {
       toast.error('Cannot update demo user roles');
@@ -212,6 +220,12 @@ const Admin = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent edits in demo mode
+    if (isDemoMode) {
+      toast.error('Demo mode: Editing is disabled. Please log in as an admin to make changes.');
+      return;
+    }
     
     if (!formData.name || !formData.price) {
       toast.error('Name and price are required');
@@ -282,6 +296,12 @@ const Admin = () => {
   };
 
   const handleDeleteConfirm = async () => {
+    if (isDemoMode) {
+      toast.error('Demo mode: Editing is disabled. Please log in as an admin to make changes.');
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
+      return;
+    }
     if (!productToDelete) return;
 
     try {
@@ -430,18 +450,8 @@ const Admin = () => {
     return matchesSearch && matchesCategory;
   });
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>You need to be logged in to access the admin dashboard.</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+  // Demo mode check
+  const isDemoMode = !user || userRole === 'demo';
 
   if (loading) {
     return (
@@ -454,6 +464,26 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="text-blue-600 dark:text-blue-400">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100">Demo Mode</h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  You're viewing the admin dashboard in demo mode. All editing features are disabled. 
+                  <span className="font-medium"> Log in as an admin to access full functionality.</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-4">Admin Dashboard</h1>
           <p className="text-muted-foreground text-lg">
@@ -461,12 +491,12 @@ const Admin = () => {
           </p>
           <div className="flex items-center gap-2 mt-2">
             <Badge variant="outline" className="capitalize">
-              {userRole?.replace('_', ' ')}
+              {isDemoMode ? 'Demo Viewer' : userRole?.replace('_', ' ')}
             </Badge>
           </div>
         </div>
 
-        {userRole === 'super_admin' ? (
+        {(userRole === 'super_admin' || isDemoMode) ? (
           <Tabs defaultValue="products" className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-muted p-1 rounded-lg h-auto">
               <TabsTrigger 
@@ -516,7 +546,16 @@ const Admin = () => {
                   </Select>
                   <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
                     <DialogTrigger asChild>
-                      <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 w-full sm:w-auto whitespace-nowrap">
+                      <Button 
+                        onClick={() => {
+                          if (isDemoMode) {
+                            toast.error('Demo mode: Editing is disabled. Please log in as an admin to make changes.');
+                          } else {
+                            setShowAddForm(true);
+                          }
+                        }} 
+                        className="flex items-center gap-2 w-full sm:w-auto whitespace-nowrap"
+                      >
                         <PlusCircle className="h-4 w-4" />
                         <span className="hidden sm:inline">Add Product</span>
                         <span className="sm:hidden">Add</span>
@@ -817,12 +856,12 @@ const Admin = () => {
                           </div>
 
                           {/* Column 4: Actions */}
-                          <div className="col-span-4 sm:col-span-1 flex gap-1 sm:gap-2 sm:flex-col">
+                          <div className="col-span-4 sm:col-span-1 flex gap-1 sm:gap-2 sm:flex-col sm:items-end sm:ml-auto">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleEdit(product)}
-                              className="flex-1 sm:flex-none text-xs px-2 py-1"
+                              className="flex-1 sm:flex-none sm:w-20 text-xs px-2 py-1 sm:px-2 sm:py-1"
                             >
                               <Edit className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
                               <span className="hidden sm:inline">Edit</span>
@@ -833,7 +872,7 @@ const Admin = () => {
                                   variant="destructive"
                                   size="sm"
                                   onClick={() => handleDeleteClick(product.id)}
-                                  className="flex-1 sm:flex-none text-xs px-2 py-1"
+                                  className="flex-1 sm:flex-none sm:w-20 text-xs px-2 py-1 sm:px-2 sm:py-1"
                                 >
                                   <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
                                   <span className="hidden sm:inline">Delete</span>
@@ -866,7 +905,7 @@ const Admin = () => {
               </div>
             </TabsContent>
 
-            {userRole === 'super_admin' && (
+            {(userRole === 'super_admin' || isDemoMode) && (
               <TabsContent value="users" className="mt-6">
                 <div className="mb-6">
                   <div className="flex flex-col gap-4">
@@ -905,8 +944,8 @@ const Admin = () => {
                               <Badge variant="outline" className="text-xs">User</Badge>
                               <Select 
                                 value={user.role} 
-                                onValueChange={(value: 'user' | 'admin' | 'super_admin') => updateUserRole(user.user_id, value)}
-                                disabled={user.user_id.startsWith('demo-user-')}
+                                onValueChange={(value: 'user' | 'admin' | 'super_admin') => isDemoMode ? toast.error('Demo mode: Editing is disabled. Please log in as an admin to make changes.') : updateUserRole(user.user_id, value)}
+                                disabled={user.user_id.startsWith('demo-user-') || isDemoMode}
                               >
                                 <SelectTrigger className="w-20 text-xs">
                                   <SelectValue />
@@ -1006,9 +1045,13 @@ const Admin = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+                <Dialog open={showAddForm} onOpenChange={isDemoMode ? () => {} : setShowAddForm}>
                   <DialogTrigger asChild>
-                    <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 w-full sm:w-auto whitespace-nowrap">
+                    <Button 
+                      onClick={() => isDemoMode ? toast.error('Demo mode: Editing is disabled. Please log in as an admin to make changes.') : setShowAddForm(true)} 
+                      className="flex items-center gap-2 w-full sm:w-auto whitespace-nowrap"
+                      disabled={isDemoMode}
+                    >
                       <PlusCircle className="h-4 w-4" />
                       Add Product
                     </Button>
