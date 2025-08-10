@@ -24,6 +24,7 @@ interface Product {
   image_url: string;
   images: string[];
   stock: number;
+  category: string;
 }
 
 interface UserProfile {
@@ -46,12 +47,15 @@ const Admin = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: '',
     image_url: '',
     stock: '',
+    category: '',
     features: '', // Temporary field for AI generation
   });
   const [additionalImages, setAdditionalImages] = useState<string[]>(['']);
@@ -225,6 +229,7 @@ const Admin = () => {
         image_url: formData.image_url,
         images: filteredAdditionalImages,
         stock: parseInt(formData.stock) || 0,
+        category: formData.category || 'general',
       };
 
       if (editingProduct) {
@@ -244,7 +249,7 @@ const Admin = () => {
         toast.success('Product created successfully');
       }
 
-      setFormData({ name: '', description: '', price: '', image_url: '', stock: '', features: '' });
+      setFormData({ name: '', description: '', price: '', image_url: '', stock: '', category: '', features: '' });
       setAdditionalImages(['']);
       setEditingProduct(null);
       setShowAddForm(false); // Hide form after successful submission
@@ -263,6 +268,7 @@ const Admin = () => {
       price: product.price.toString(),
       image_url: product.image_url,
       stock: product.stock.toString(),
+      category: product.category || '',
       features: '',
     });
     // Set additional images
@@ -351,7 +357,7 @@ const Admin = () => {
   const handleCancel = () => {
     setEditingProduct(null);
     setShowAddForm(false);
-    setFormData({ name: '', description: '', price: '', image_url: '', stock: '', features: '' });
+    setFormData({ name: '', description: '', price: '', image_url: '', stock: '', category: '', features: '' });
     setAdditionalImages(['']);
   };
 
@@ -370,9 +376,6 @@ const Admin = () => {
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
-    // Add some visual feedback
-    const target = e.currentTarget as HTMLElement;
-    target.style.transform = 'scale(1.02)';
   };
 
   const handleDragEnter = (e: React.DragEvent, index: number) => {
@@ -383,7 +386,6 @@ const Admin = () => {
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
-    // Only clear if we're leaving the container, not just moving between child elements
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
@@ -401,9 +403,6 @@ const Admin = () => {
   const handleDragEnd = (e: React.DragEvent) => {
     setDraggedIndex(null);
     setDragOverIndex(null);
-    // Reset transform
-    const target = e.currentTarget as HTMLElement;
-    target.style.transform = '';
   };
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
@@ -414,15 +413,22 @@ const Admin = () => {
     const newImages = [...additionalImages];
     const draggedItem = newImages[draggedIndex];
     
-    // Remove the dragged item
     newImages.splice(draggedIndex, 1);
-    // Insert it at the new position
     newImages.splice(dropIndex, 0, draggedItem);
     
     setAdditionalImages(newImages);
     setDraggedIndex(null);
     setDragOverIndex(null);
   };
+
+  // Filter products based on search and category
+  const categories = ['all', ...new Set(products.map(product => product.category).filter(Boolean))];
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         product.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   if (!user) {
     return (
@@ -480,467 +486,416 @@ const Admin = () => {
             </TabsList>
 
             <TabsContent value="products" className="mt-6">
-            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-8">
-          <div>
-            <h2 className="text-2xl font-bold">Manage Products</h2>
-            <p className="text-muted-foreground">View and manage your product inventory</p>
-          </div>
-          <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 w-full lg:w-auto">
-                <PlusCircle className="h-4 w-4" />
-                Add Product
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingProduct ? 'Edit Product' : 'Add New Product'}
-                </DialogTitle>
-                <DialogDescription>
-                  Create or edit products with AI-generated descriptions
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-8">
                 <div>
-                  <Label htmlFor="name">Product Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter product name"
-                    required
-                  />
+                  <h2 className="text-2xl font-bold">Manage Products</h2>
+                  <p className="text-muted-foreground">View and manage your product inventory</p>
                 </div>
-
-                <div>
-                  <Label htmlFor="features">Key Features (for AI description)</Label>
-                  <Input
-                    id="features"
-                    value={formData.features}
-                    onChange={(e) => setFormData(prev => ({ ...prev, features: e.target.value }))}
-                    placeholder="e.g., Wireless, Noise Cancelling, 20 hours battery"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={generateDescription}
-                      disabled={generatingDescription || !formData.name}
-                    >
-                      <Sparkles className="h-4 w-4 mr-1" />
-                      {generatingDescription ? 'Generating...' : 'Generate with AI'}
-                    </Button>
-                  </div>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Product description will appear here..."
-                    rows={4}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="price">Price *</Label>
+                
+                {/* Search and Filter Controls */}
+                <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                  <div className="flex-1 lg:w-64">
                     <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                      placeholder="0.00"
-                      required
+                      placeholder="Search products..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full"
                     />
                   </div>
-
-                  <div>
-                    <Label htmlFor="stock">Stock Quantity</Label>
-                    <Input
-                      id="stock"
-                      type="number"
-                      value={formData.stock}
-                      onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="image_url">Main Image URL *</Label>
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      id="image_url"
-                      value={formData.image_url}
-                      onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                      placeholder="https://example.com/main-image.jpg"
-                      className="flex-1"
-                    />
-                     {formData.image_url && (
-                       <img
-                         src={formData.image_url}
-                         alt="Main image preview"
-                         className="h-10 w-16 object-cover rounded border border-border cursor-pointer hover:opacity-80 transition-opacity"
-                         onClick={() => setImageDialogSrc(formData.image_url)}
-                         onError={(e) => {
-                           e.currentTarget.style.display = 'none';
-                         }}
-                       />
-                     )}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <Label>Additional Images</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addImageInput}>
-                      <PlusCircle className="h-4 w-4 mr-1" />
-                      Add Image
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {additionalImages.map((image, index) => (
-                      <div 
-                        key={index} 
-                        className={`
-                          flex gap-2 items-center p-3 rounded-lg border transition-all duration-200 ease-in-out
-                          ${draggedIndex === index 
-                            ? 'opacity-50 scale-105 bg-primary/10 border-primary shadow-lg transform rotate-1' 
-                            : dragOverIndex === index && draggedIndex !== null && draggedIndex !== index
-                            ? 'bg-primary/5 border-primary/50 scale-102 shadow-md animate-pulse'
-                            : 'bg-background hover:bg-muted/30 hover:scale-101 hover:shadow-sm'
-                          }
-                          ${draggedIndex !== null && draggedIndex !== index ? 'animate-fade-in' : ''}
-                        `}
-                        style={{
-                          transform: draggedIndex === index ? 'scale(1.02) rotate(1deg)' : 'scale(1)',
-                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                          boxShadow: draggedIndex === index ? '0 8px 25px rgba(0,0,0,0.15)' : undefined
-                        }}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, index)}
-                        onDragEnter={(e) => handleDragEnter(e, index)}
-                        onDragLeave={handleDragLeave}
-                        onDragOver={handleDragOver}
-                        onDragEnd={handleDragEnd}
-                        onDrop={(e) => handleDrop(e, index)}
-                      >
-                        <div className={`
-                          flex items-center transition-transform duration-150
-                          ${draggedIndex === index 
-                            ? 'cursor-grabbing scale-110' 
-                            : 'cursor-grab hover:scale-105'
-                          }
-                        `}>
-                          <GripVertical className={`
-                            h-4 w-4 transition-colors duration-150
-                            ${draggedIndex === index 
-                              ? 'text-primary' 
-                              : 'text-muted-foreground hover:text-foreground'
-                            }
-                          `} />
-                        </div>
-                        <span className={`
-                          text-sm font-medium w-8 transition-colors duration-150
-                          ${draggedIndex === index 
-                            ? 'text-primary' 
-                            : 'text-muted-foreground'
-                          }
-                        `}>
-                          #{index + 1}
-                        </span>
-                        <div className="flex-1 flex items-center space-x-2">
-                          <Input
-                            value={image}
-                            onChange={(e) => updateImageInput(index, e.target.value)}
-                            placeholder={`https://example.com/image${index + 1}.jpg`}
-                            className={`
-                              flex-1 transition-all duration-150
-                              ${draggedIndex === index 
-                                ? 'border-primary/50 bg-primary/5' 
-                                : ''
-                              }
-                            `}
-                          />
-                           {image && (
-                             <img
-                               src={image}
-                               alt={`Additional image ${index + 1} preview`}
-                               className="h-10 w-16 object-cover rounded border border-border cursor-pointer hover:opacity-80 transition-opacity"
-                               onClick={() => setImageDialogSrc(image)}
-                               onError={(e) => {
-                                 e.currentTarget.style.display = 'none';
-                               }}
-                             />
-                           )}
-                        </div>
-                        {additionalImages.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeImageInput(index)}
-                            className="hover-scale transition-all duration-150 hover:bg-destructive/10 hover:border-destructive/50"
-                          >
-                            <Trash2 className="h-4 w-4 hover:text-destructive transition-colors duration-150" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Drag and drop to reorder images. The main image above will be the primary photo.
-                  </p>
-                </div>
-
-                <div className="flex gap-4">
-                  <Button type="submit" className="flex-1">
-                    <PlusCircle className="h-4 w-4 mr-1" />
-                    {editingProduct ? 'Update Product' : 'Create Product'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleCancel}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-
-        <div className="grid gap-6">
-          {products.map((product) => (
-            <Card key={product.id}>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-xl">{product.name}</CardTitle>
-                    <CardDescription className="mt-2">
-                      {product.description}
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    {/* Desktop Actions */}
-                    <div className="hidden md:flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(product)}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+                    <DialogTrigger asChild>
+                      <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 w-full sm:w-auto">
+                        <PlusCircle className="h-4 w-4" />
+                        Add Product
                       </Button>
-                      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteClick(product.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="sm:max-w-md">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Product</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{product.name}"? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleDeleteConfirm}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete Product
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>
+                          {editingProduct ? 'Edit Product' : 'Add New Product'}
+                        </DialogTitle>
+                        <DialogDescription>
+                          Create or edit products with AI-generated descriptions
+                        </DialogDescription>
+                      </DialogHeader>
+                      <form onSubmit={handleSubmit} className="space-y-6">
+                        <div>
+                          <Label htmlFor="name">Product Name *</Label>
+                          <Input
+                            id="name"
+                            value={formData.name}
+                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="Enter product name"
+                            required
+                          />
+                        </div>
 
-                    {/* Mobile Actions */}
-                    <div className="md:hidden">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(product)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteClick(product.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      
-                      {/* Mobile Delete Dialog */}
-                      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                        <AlertDialogContent className="sm:max-w-md">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Product</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{product.name}"? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleDeleteConfirm}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete Product
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  <Badge variant="outline" className="text-lg font-semibold">
-                    ${product.price}
-                  </Badge>
-                  <Badge variant={product.stock > 0 ? "default" : "secondary"}>
-                    {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-                  </Badge>
-                  {product.image_url && (
-                    <div className="ml-auto">
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-          </TabsContent>
+                        <div>
+                          <Label htmlFor="features">Key Features (for AI description)</Label>
+                          <Input
+                            id="features"
+                            value={formData.features}
+                            onChange={(e) => setFormData(prev => ({ ...prev, features: e.target.value }))}
+                            placeholder="e.g., Wireless, Noise Cancelling, 20 hours battery"
+                          />
+                        </div>
 
-          {userRole === 'super_admin' && (
-            <TabsContent value="users" className="mt-6">
-              <div className="mb-6">
-                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold">User Management</h2>
-                    <p className="text-muted-foreground">Manage user accounts and roles</p>
-                  </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <Label htmlFor="description">Description</Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={generateDescription}
+                              disabled={generatingDescription || !formData.name}
+                            >
+                              <Sparkles className="h-4 w-4 mr-1" />
+                              {generatingDescription ? 'Generating...' : 'Generate with AI'}
+                            </Button>
+                          </div>
+                          <Textarea
+                            id="description"
+                            value={formData.description}
+                            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                            placeholder="Product description will appear here..."
+                            rows={4}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="price">Price *</Label>
+                            <Input
+                              id="price"
+                              type="number"
+                              step="0.01"
+                              value={formData.price}
+                              onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                              placeholder="0.00"
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <Label htmlFor="stock">Stock Quantity</Label>
+                            <Input
+                              id="stock"
+                              type="number"
+                              value={formData.stock}
+                              onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="category">Category</Label>
+                          <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="laptops">Laptops</SelectItem>
+                              <SelectItem value="accessories">Accessories</SelectItem>
+                              <SelectItem value="smartphones">Smartphones</SelectItem>
+                              <SelectItem value="tablets">Tablets</SelectItem>
+                              <SelectItem value="electronics">Electronics</SelectItem>
+                              <SelectItem value="general">General</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="image_url">Main Image URL *</Label>
+                          <div className="flex items-center space-x-2">
+                            <Input
+                              id="image_url"
+                              value={formData.image_url}
+                              onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
+                              placeholder="https://example.com/main-image.jpg"
+                              className="flex-1"
+                            />
+                             {formData.image_url && (
+                               <img
+                                 src={formData.image_url}
+                                 alt="Main image preview"
+                                 className="h-10 w-16 object-cover rounded border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                 onClick={() => setImageDialogSrc(formData.image_url)}
+                                 onError={(e) => {
+                                   e.currentTarget.style.display = 'none';
+                                 }}
+                               />
+                             )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <Label>Additional Images</Label>
+                            <Button type="button" variant="outline" size="sm" onClick={addImageInput}>
+                              <PlusCircle className="h-4 w-4 mr-1" />
+                              Add Image
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            {additionalImages.map((image, index) => (
+                              <div 
+                                key={index} 
+                                className={`
+                                  flex gap-2 items-center p-3 rounded-lg border transition-all duration-200 ease-in-out
+                                  ${draggedIndex === index 
+                                    ? 'opacity-50 scale-105 bg-primary/10 border-primary shadow-lg transform rotate-1' 
+                                    : dragOverIndex === index && draggedIndex !== null && draggedIndex !== index
+                                    ? 'bg-primary/5 border-primary/50 scale-102 shadow-md animate-pulse'
+                                    : 'bg-background hover:bg-muted/30 hover:scale-101 hover:shadow-sm'
+                                  }
+                                  ${draggedIndex !== null && draggedIndex !== index ? 'animate-fade-in' : ''}
+                                `}
+                                style={{
+                                  transform: draggedIndex === index ? 'scale(1.02) rotate(1deg)' : 'scale(1)',
+                                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                  boxShadow: draggedIndex === index ? '0 8px 25px rgba(0,0,0,0.15)' : undefined
+                                }}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, index)}
+                                onDragEnter={(e) => handleDragEnter(e, index)}
+                                onDragLeave={handleDragLeave}
+                                onDragOver={handleDragOver}
+                                onDragEnd={handleDragEnd}
+                                onDrop={(e) => handleDrop(e, index)}
+                              >
+                                <div className={`
+                                  flex items-center transition-transform duration-150
+                                  ${draggedIndex === index 
+                                    ? 'cursor-grabbing scale-110' 
+                                    : 'cursor-grab hover:scale-105'
+                                  }
+                                `}>
+                                  <GripVertical className={`
+                                    h-4 w-4 transition-colors duration-150
+                                    ${draggedIndex === index 
+                                      ? 'text-primary' 
+                                      : 'text-muted-foreground hover:text-foreground'
+                                    }
+                                  `} />
+                                </div>
+                                <span className={`
+                                  text-sm font-medium w-8 transition-colors duration-150
+                                  ${draggedIndex === index 
+                                    ? 'text-primary' 
+                                    : 'text-muted-foreground'
+                                  }
+                                `}>
+                                  #{index + 1}
+                                </span>
+                                <div className="flex-1 flex items-center space-x-2">
+                                  <Input
+                                    value={image}
+                                    onChange={(e) => updateImageInput(index, e.target.value)}
+                                    placeholder={`https://example.com/image${index + 1}.jpg`}
+                                    className={`
+                                      flex-1 transition-all duration-150
+                                      ${draggedIndex === index 
+                                        ? 'border-primary/50 bg-primary/5' 
+                                        : ''
+                                      }
+                                    `}
+                                  />
+                                   {image && (
+                                     <img
+                                       src={image}
+                                       alt={`Additional image ${index + 1} preview`}
+                                       className="h-10 w-16 object-cover rounded border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                       onClick={() => setImageDialogSrc(image)}
+                                       onError={(e) => {
+                                         e.currentTarget.style.display = 'none';
+                                       }}
+                                     />
+                                   )}
+                                </div>
+                                {additionalImages.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => removeImageInput(index)}
+                                    className="hover-scale transition-all duration-150 hover:bg-destructive/10 hover:border-destructive/50"
+                                  >
+                                    <Trash2 className="h-4 w-4 hover:text-destructive transition-colors duration-150" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Drag and drop to reorder images. The main image above will be the primary photo.
+                          </p>
+                        </div>
+
+                        <div className="flex gap-4">
+                          <Button type="submit" className="flex-1">
+                            <PlusCircle className="h-4 w-4 mr-1" />
+                            {editingProduct ? 'Update Product' : 'Create Product'}
+                          </Button>
+                          <Button type="button" variant="outline" onClick={handleCancel}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
-              <div className="grid gap-6 md:grid-cols-2">
-                {/* Regular Users */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Users
-                    </CardTitle>
-                    <CardDescription>
-                      Regular user accounts
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {users.filter(user => user.role === 'user').map((user) => (
-                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex-1">
-                            <div className="font-medium">{user.email}</div>
-                            <div className="text-sm text-muted-foreground">
-                              User ID: {user.user_id.slice(0, 8)}...
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              Created: {new Date(user.created_at).toLocaleDateString()}
-                            </div>
+
+              <div className="grid gap-6">
+                {filteredProducts.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex items-center justify-center py-8">
+                      <p className="text-muted-foreground">
+                        {searchTerm || selectedCategory !== 'all' 
+                          ? 'No products match your filters.' 
+                          : 'No products found. Create your first product!'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredProducts.map((product) => (
+                    <Card key={product.id}>
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-xl">{product.name}</CardTitle>
+                            <CardDescription className="mt-2">
+                              {product.description}
+                            </CardDescription>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="capitalize">
-                              {user.role.replace('_', ' ')}
-                            </Badge>
-                            <Select
-                              value={user.role}
-                              onValueChange={(newRole: 'user' | 'admin' | 'super_admin') => 
-                                updateUserRole(user.user_id, newRole)
-                              }
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(product)}
                             >
-                              <SelectTrigger className="w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="user">User</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="super_admin">Super Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
+                              <Edit className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+                            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDeleteClick(product.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-1" />
+                                  Delete
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="sm:max-w-md">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Product</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{product.name}"? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={handleDeleteConfirm}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete Product
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
-                      ))}
-                      {users.filter(user => user.role === 'user').length === 0 && (
-                        <p className="text-muted-foreground text-center py-4">No regular users found</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Admin Users */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="h-5 w-5" />
-                      Administrators
-                    </CardTitle>
-                    <CardDescription>
-                      Admin and super admin accounts
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {users.filter(user => user.role === 'admin' || user.role === 'super_admin').map((user) => (
-                        <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex-1">
-                            <div className="font-medium">{user.email}</div>
-                            <div className="text-sm text-muted-foreground">
-                              User ID: {user.user_id.slice(0, 8)}...
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              Created: {new Date(user.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Badge 
-                              variant={user.role === 'super_admin' ? 'default' : 'secondary'}
-                              className="capitalize"
-                            >
-                              {user.role.replace('_', ' ')}
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center gap-4">
+                          <Badge variant="outline" className="text-lg font-semibold">
+                            ${product.price}
+                          </Badge>
+                          <Badge variant={product.stock > 0 ? "default" : "secondary"}>
+                            {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                          </Badge>
+                          {product.category && (
+                            <Badge variant="secondary">
+                              {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
                             </Badge>
-                            {user.user_id !== user?.id && ( // Don't allow current user to change their own role
-                              <Select
-                                value={user.role}
-                                onValueChange={(newRole: 'user' | 'admin' | 'super_admin') => 
-                                  updateUserRole(user.user_id, newRole)
-                                }
+                          )}
+                          {product.image_url && (
+                            <div className="ml-auto">
+                              <img
+                                src={product.image_url}
+                                alt={product.name}
+                                className="w-16 h-16 object-cover rounded"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </TabsContent>
+
+            {userRole === 'super_admin' && (
+              <TabsContent value="users" className="mt-6">
+                <div className="mb-6">
+                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+                    <div>
+                      <h2 className="text-2xl font-bold">User Management</h2>
+                      <p className="text-muted-foreground">Manage user accounts and roles</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Regular Users */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        Users
+                      </CardTitle>
+                      <CardDescription>
+                        Regular user accounts
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {users.filter(user => user.role === 'user').map((user) => (
+                          <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="flex-1">
+                              <div className="font-medium">{user.email}</div>
+                              <div className="text-sm text-muted-foreground">
+                                User ID: {user.user_id.slice(0, 8)}...
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Created: {new Date(user.created_at).toLocaleDateString()}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">User</Badge>
+                              <Select 
+                                value={user.role} 
+                                onValueChange={(value: 'user' | 'admin' | 'super_admin') => updateUserRole(user.user_id, value)}
+                                disabled={user.user_id.startsWith('demo-user-')}
                               >
-                                <SelectTrigger className="w-32">
+                                <SelectTrigger className="w-24">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -949,311 +904,395 @@ const Admin = () => {
                                   <SelectItem value="super_admin">Super Admin</SelectItem>
                                 </SelectContent>
                               </Select>
-                            )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                      {users.filter(user => user.role === 'admin' || user.role === 'super_admin').length === 0 && (
-                        <p className="text-muted-foreground text-center py-4">No administrators found</p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          )}
-        </Tabs>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Admin Users */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Shield className="h-5 w-5" />
+                        Administrators
+                      </CardTitle>
+                      <CardDescription>
+                        Admin and super admin accounts
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {users.filter(user => ['admin', 'super_admin'].includes(user.role)).map((user) => (
+                          <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="flex-1">
+                              <div className="font-medium">{user.email}</div>
+                              <div className="text-sm text-muted-foreground">
+                                User ID: {user.user_id.slice(0, 8)}...
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Created: {new Date(user.created_at).toLocaleDateString()}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'}>
+                                {user.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                              </Badge>
+                              <Select 
+                                value={user.role} 
+                                onValueChange={(value: 'user' | 'admin' | 'super_admin') => updateUserRole(user.user_id, value)}
+                              >
+                                <SelectTrigger className="w-24">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="user">User</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            )}
+          </Tabs>
         ) : (
-          // For regular admins, show products directly without tabs
-          <div className="mt-6">
+          // Regular admin view - only products
+          <div>
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-8">
               <div>
                 <h2 className="text-2xl font-bold">Manage Products</h2>
                 <p className="text-muted-foreground">View and manage your product inventory</p>
               </div>
-              <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 w-full lg:w-auto">
-                    <PlusCircle className="h-4 w-4" />
-                    Add Product
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingProduct ? 'Edit Product' : 'Add New Product'}
-                    </DialogTitle>
-                    <DialogDescription>
-                      Create or edit products with AI-generated descriptions
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                      <Label htmlFor="name">Product Name *</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="Enter product name"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="features">Key Features (for AI description)</Label>
-                      <Input
-                        id="features"
-                        value={formData.features}
-                        onChange={(e) => setFormData(prev => ({ ...prev, features: e.target.value }))}
-                        placeholder="e.g., Wireless, Noise Cancelling, 20 hours battery"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <Label htmlFor="description">Description</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={generateDescription}
-                          disabled={generatingDescription || !formData.name}
-                        >
-                          <Sparkles className="h-4 w-4 mr-1" />
-                          {generatingDescription ? 'Generating...' : 'Generate with AI'}
-                        </Button>
-                      </div>
-                      <Textarea
-                        id="description"
-                        value={formData.description}
-                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Product description will appear here..."
-                        rows={4}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              {/* Search and Filter Controls */}
+              <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                <div className="flex-1 lg:w-64">
+                  <Input
+                    placeholder="Search products..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-full sm:w-40">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 w-full sm:w-auto">
+                      <PlusCircle className="h-4 w-4" />
+                      Add Product
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingProduct ? 'Edit Product' : 'Add New Product'}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Create or edit products with AI-generated descriptions
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-6">
                       <div>
-                        <Label htmlFor="price">Price *</Label>
+                        <Label htmlFor="name">Product Name *</Label>
                         <Input
-                          id="price"
-                          type="number"
-                          step="0.01"
-                          value={formData.price}
-                          onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                          placeholder="0.00"
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Enter product name"
                           required
                         />
                       </div>
 
                       <div>
-                        <Label htmlFor="stock">Stock Quantity</Label>
+                        <Label htmlFor="features">Key Features (for AI description)</Label>
                         <Input
-                          id="stock"
-                          type="number"
-                          value={formData.stock}
-                          onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
-                          placeholder="0"
+                          id="features"
+                          value={formData.features}
+                          onChange={(e) => setFormData(prev => ({ ...prev, features: e.target.value }))}
+                          placeholder="e.g., Wireless, Noise Cancelling, 20 hours battery"
                         />
                       </div>
-                    </div>
 
-                    <div>
-                      <Label htmlFor="image_url">Main Image URL</Label>
-                      <Input
-                        id="image_url"
-                        value={formData.image_url}
-                        onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                        placeholder="https://example.com/image.jpg"
-                      />
-                    </div>
-
-                    <div>
-                      <Label>Additional Images</Label>
-                      <div className="space-y-3 mt-2">
-                        {additionalImages.map((imageUrl, index) => (
-                          <div
-                            key={index}
-                            className={`flex gap-2 items-center p-3 rounded-lg border transition-all duration-200 ${
-                              dragOverIndex === index ? 'border-primary bg-primary/10 scale-105' : 'border-border bg-background'
-                            } ${draggedIndex === index ? 'opacity-50' : ''}`}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, index)}
-                            onDragEnter={(e) => handleDragEnter(e, index)}
-                            onDragLeave={handleDragLeave}
-                            onDragOver={handleDragOver}
-                            onDragEnd={handleDragEnd}
-                            onDrop={(e) => handleDrop(e, index)}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <Label htmlFor="description">Description</Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={generateDescription}
+                            disabled={generatingDescription || !formData.name}
                           >
-                            <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-                            <div className="flex-1 flex gap-2">
-                              <Input
-                                value={imageUrl}
-                                onChange={(e) => updateImageInput(index, e.target.value)}
-                                placeholder={`Additional image ${index + 1} URL`}
-                                className="flex-1"
-                              />
-                              {imageUrl && (
+                            <Sparkles className="h-4 w-4 mr-1" />
+                            {generatingDescription ? 'Generating...' : 'Generate with AI'}
+                          </Button>
+                        </div>
+                        <Textarea
+                          id="description"
+                          value={formData.description}
+                          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Product description will appear here..."
+                          rows={4}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="price">Price *</Label>
+                          <Input
+                            id="price"
+                            type="number"
+                            step="0.01"
+                            value={formData.price}
+                            onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                            placeholder="0.00"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="stock">Stock Quantity</Label>
+                          <Input
+                            id="stock"
+                            type="number"
+                            value={formData.stock}
+                            onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="image_url">Main Image URL</Label>
+                        <Input
+                          id="image_url"
+                          value={formData.image_url}
+                          onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
+                          placeholder="https://example.com/image.jpg"
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Additional Images</Label>
+                        <div className="space-y-3 mt-2">
+                          {additionalImages.map((imageUrl, index) => (
+                            <div
+                              key={index}
+                              className={`flex gap-2 items-center p-3 rounded-lg border transition-all duration-200 ${
+                                dragOverIndex === index ? 'border-primary bg-primary/10 scale-105' : 'border-border bg-background'
+                              } ${draggedIndex === index ? 'opacity-50' : ''}`}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, index)}
+                              onDragEnter={(e) => handleDragEnter(e, index)}
+                              onDragLeave={handleDragLeave}
+                              onDragOver={handleDragOver}
+                              onDragEnd={handleDragEnd}
+                              onDrop={(e) => handleDrop(e, index)}
+                            >
+                              <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
+                              <div className="flex-1 flex gap-2">
+                                <Input
+                                  value={imageUrl}
+                                  onChange={(e) => updateImageInput(index, e.target.value)}
+                                  placeholder={`Additional image ${index + 1} URL`}
+                                  className="flex-1"
+                                />
+                                {imageUrl && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setImageDialogSrc(imageUrl)}
+                                    className="px-2"
+                                  >
+                                    <img
+                                      src={imageUrl}
+                                      alt={`Preview ${index + 1}`}
+                                      className="w-8 h-8 object-cover rounded"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                      }}
+                                    />
+                                  </Button>
+                                )}
+                              </div>
+                              {additionalImages.length > 1 && (
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setImageDialogSrc(imageUrl)}
-                                  className="px-2"
+                                  onClick={() => removeImageInput(index)}
+                                  className="px-2 text-destructive hover:text-destructive"
                                 >
-                                  <img
-                                    src={imageUrl}
-                                    alt={`Preview ${index + 1}`}
-                                    className="w-8 h-8 object-cover rounded"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                    }}
-                                  />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               )}
                             </div>
-                            {additionalImages.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeImageInput(index)}
-                                className="px-2 text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addImageInput}
+                            className="w-full"
+                          >
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Add Another Image
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-4 border-t">
                         <Button
                           type="button"
                           variant="outline"
-                          size="sm"
-                          onClick={addImageInput}
-                          className="w-full"
+                          onClick={handleCancel}
                         >
-                          <PlusCircle className="h-4 w-4 mr-2" />
-                          Add Another Image
+                          Cancel
+                        </Button>
+                        <Button type="submit">
+                          {editingProduct ? 'Update Product' : 'Create Product'}
                         </Button>
                       </div>
-                    </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
 
-                    <div className="flex justify-end gap-2 pt-4 border-t">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCancel}
-                      >
-                        Cancel
-                      </Button>
-                      <Button type="submit">
-                        {editingProduct ? 'Update Product' : 'Create Product'}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            <div className="grid gap-6">
-              {products.map((product) => (
-                <Card key={product.id} className="transition-all duration-200 hover:shadow-md">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <CardTitle className="text-xl">{product.name}</CardTitle>
-                        <CardDescription className="text-base leading-relaxed">
-                          {product.description || 'No description available'}
-                        </CardDescription>
-                        {product.images && product.images.length > 0 && (
-                          <div className="flex gap-2 mt-3">
-                            {product.images.map((image, index) => (
-                              <Button
-                                key={index}
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setImageDialogSrc(image)}
-                                className="p-1 h-auto"
-                              >
-                                <img
-                                  src={image}
-                                  alt={`${product.name} ${index + 1}`}
-                                  className="w-12 h-12 object-cover rounded border"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                  }}
-                                />
-                              </Button>
-                            ))}
+              <div className="grid gap-6">
+                {filteredProducts.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex items-center justify-center py-8">
+                      <p className="text-muted-foreground">
+                        {searchTerm || selectedCategory !== 'all' 
+                          ? 'No products match your filters.' 
+                          : 'No products found. Create your first product!'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredProducts.map((product) => (
+                    <Card key={product.id} className="transition-all duration-200 hover:shadow-md">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <CardTitle className="text-xl">{product.name}</CardTitle>
+                            <CardDescription className="text-base leading-relaxed">
+                              {product.description || 'No description available'}
+                            </CardDescription>
+                            {product.images && product.images.length > 0 && (
+                              <div className="flex gap-2 mt-3">
+                                {product.images.map((image, index) => (
+                                  <Button
+                                    key={index}
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setImageDialogSrc(image)}
+                                    className="p-1 h-auto"
+                                  >
+                                    <img
+                                      src={image}
+                                      alt={`${product.name} ${index + 1}`}
+                                      className="w-12 h-12 object-cover rounded border"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                      }}
+                                    />
+                                  </Button>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(product)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                          <AlertDialogTrigger asChild>
+                          <div className="flex items-center gap-2">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDeleteClick(product.id)}
-                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleEdit(product)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Edit className="h-4 w-4" />
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Product</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "{product.name}"? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={handleDeleteConfirm}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete Product
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-4">
-                      <Badge variant="outline" className="text-lg font-semibold">
-                        ${product.price}
-                      </Badge>
-                      <Badge variant={product.stock > 0 ? "default" : "secondary"}>
-                        {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-                      </Badge>
-                      {product.image_url && (
-                        <div className="ml-auto">
-                          <img
-                            src={product.image_url}
-                            alt={product.name}
-                            className="w-16 h-16 object-cover rounded"
-                          />
+                            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteClick(product.id)}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Product</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{product.name}"? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={handleDeleteConfirm}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete Product
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center gap-4">
+                          <Badge variant="outline" className="text-lg font-semibold">
+                            ${product.price}
+                          </Badge>
+                          <Badge variant={product.stock > 0 ? "default" : "secondary"}>
+                            {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                          </Badge>
+                          {product.category && (
+                            <Badge variant="secondary">
+                              {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
+                            </Badge>
+                          )}
+                          {product.image_url && (
+                            <div className="ml-auto">
+                              <img
+                                src={product.image_url}
+                                alt={product.name}
+                                className="w-16 h-16 object-cover rounded"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
 
       {/* Image Preview Dialog */}
