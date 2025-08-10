@@ -486,15 +486,15 @@ const Admin = () => {
             </TabsList>
 
             <TabsContent value="products" className="mt-6">
-              <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-8">
+              <div className="flex flex-col gap-4 mb-8">
                 <div>
                   <h2 className="text-2xl font-bold">Manage Products</h2>
                   <p className="text-muted-foreground">View and manage your product inventory</p>
                 </div>
                 
                 {/* Search and Filter Controls */}
-                <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-                  <div className="flex-1 lg:w-64">
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                  <div className="flex-1 min-w-0">
                     <Input
                       placeholder="Search products..."
                       value={searchTerm}
@@ -503,7 +503,7 @@ const Admin = () => {
                     />
                   </div>
                   <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="w-full sm:w-40">
+                    <SelectTrigger className="w-full sm:w-[160px]">
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -516,9 +516,10 @@ const Admin = () => {
                   </Select>
                   <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
                     <DialogTrigger asChild>
-                      <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 w-full sm:w-auto">
+                      <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 w-full sm:w-auto whitespace-nowrap">
                         <PlusCircle className="h-4 w-4" />
-                        Add Product
+                        <span className="hidden sm:inline">Add Product</span>
+                        <span className="sm:hidden">Add</span>
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -774,22 +775,57 @@ const Admin = () => {
                 ) : (
                   filteredProducts.map((product) => (
                     <Card key={product.id}>
-                      <CardHeader>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <CardTitle className="text-xl">{product.name}</CardTitle>
-                            <CardDescription className="mt-2">
-                              {product.description}
-                            </CardDescription>
+                      <CardContent className="p-4">
+                        <div className="grid grid-cols-4 gap-3 items-center">
+                          {/* Column 1: Title */}
+                          <div className="col-span-4 sm:col-span-1 min-w-0">
+                            <h3 className="font-semibold text-sm sm:text-base truncate">{product.name}</h3>
+                            <p className="text-xs text-muted-foreground truncate sm:hidden">{product.description}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-2 hidden sm:block">{product.description}</p>
                           </div>
-                          <div className="flex gap-2">
+
+                          {/* Column 2: Category & Image */}
+                          <div className="col-span-2 sm:col-span-1 flex items-center gap-2">
+                            <div className="flex flex-col gap-1">
+                              {product.category && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
+                                </Badge>
+                              )}
+                            </div>
+                            {product.image_url && (
+                              <img
+                                src={product.image_url}
+                                alt={product.name}
+                                className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded border"
+                                onClick={() => setImageDialogSrc(product.image_url)}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            )}
+                          </div>
+
+                          {/* Column 3: Price & Stock */}
+                          <div className="col-span-2 sm:col-span-1 flex flex-col gap-1">
+                            <Badge variant="outline" className="text-xs font-semibold w-fit">
+                              ${product.price}
+                            </Badge>
+                            <Badge variant={product.stock > 0 ? "default" : "secondary"} className="text-xs w-fit">
+                              {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                            </Badge>
+                          </div>
+
+                          {/* Column 4: Actions */}
+                          <div className="col-span-4 sm:col-span-1 flex gap-1 sm:gap-2 sm:flex-col">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleEdit(product)}
+                              className="flex-1 sm:flex-none text-xs px-2 py-1"
                             >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Edit
+                              <Edit className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                              <span className="hidden sm:inline">Edit</span>
                             </Button>
                             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                               <AlertDialogTrigger asChild>
@@ -797,9 +833,10 @@ const Admin = () => {
                                   variant="destructive"
                                   size="sm"
                                   onClick={() => handleDeleteClick(product.id)}
+                                  className="flex-1 sm:flex-none text-xs px-2 py-1"
                                 >
-                                  <Trash2 className="h-4 w-4 mr-1" />
-                                  Delete
+                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                                  <span className="hidden sm:inline">Delete</span>
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent className="sm:max-w-md">
@@ -822,30 +859,6 @@ const Admin = () => {
                             </AlertDialog>
                           </div>
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center gap-4">
-                          <Badge variant="outline" className="text-lg font-semibold">
-                            ${product.price}
-                          </Badge>
-                          <Badge variant={product.stock > 0 ? "default" : "secondary"}>
-                            {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-                          </Badge>
-                          {product.category && (
-                            <Badge variant="secondary">
-                              {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
-                            </Badge>
-                          )}
-                          {product.image_url && (
-                            <div className="ml-auto">
-                              <img
-                                src={product.image_url}
-                                alt={product.name}
-                                className="w-16 h-16 object-cover rounded"
-                              />
-                            </div>
-                          )}
-                        </div>
                       </CardContent>
                     </Card>
                   ))
@@ -856,14 +869,14 @@ const Admin = () => {
             {userRole === 'super_admin' && (
               <TabsContent value="users" className="mt-6">
                 <div className="mb-6">
-                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+                  <div className="flex flex-col gap-4">
                     <div>
                       <h2 className="text-2xl font-bold">User Management</h2>
                       <p className="text-muted-foreground">Manage user accounts and roles</p>
                     </div>
                   </div>
                 </div>
-                <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid gap-4 lg:grid-cols-2">
                   {/* Regular Users */}
                   <Card>
                     <CardHeader>
@@ -878,9 +891,9 @@ const Admin = () => {
                     <CardContent>
                       <div className="space-y-4">
                         {users.filter(user => user.role === 'user').map((user) => (
-                          <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                            <div className="flex-1">
-                              <div className="font-medium">{user.email}</div>
+                          <div key={user.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 border rounded-lg">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">{user.email}</div>
                               <div className="text-sm text-muted-foreground">
                                 User ID: {user.user_id.slice(0, 8)}...
                               </div>
@@ -888,14 +901,14 @@ const Admin = () => {
                                 Created: {new Date(user.created_at).toLocaleDateString()}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">User</Badge>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <Badge variant="outline" className="text-xs">User</Badge>
                               <Select 
                                 value={user.role} 
                                 onValueChange={(value: 'user' | 'admin' | 'super_admin') => updateUserRole(user.user_id, value)}
                                 disabled={user.user_id.startsWith('demo-user-')}
                               >
-                                <SelectTrigger className="w-24">
+                                <SelectTrigger className="w-20 text-xs">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -925,9 +938,9 @@ const Admin = () => {
                     <CardContent>
                       <div className="space-y-4">
                         {users.filter(user => ['admin', 'super_admin'].includes(user.role)).map((user) => (
-                          <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                            <div className="flex-1">
-                              <div className="font-medium">{user.email}</div>
+                          <div key={user.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 border rounded-lg">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">{user.email}</div>
                               <div className="text-sm text-muted-foreground">
                                 User ID: {user.user_id.slice(0, 8)}...
                               </div>
@@ -935,15 +948,15 @@ const Admin = () => {
                                 Created: {new Date(user.created_at).toLocaleDateString()}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'}>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'} className="text-xs">
                                 {user.role === 'super_admin' ? 'Super Admin' : 'Admin'}
                               </Badge>
                               <Select 
                                 value={user.role} 
                                 onValueChange={(value: 'user' | 'admin' | 'super_admin') => updateUserRole(user.user_id, value)}
                               >
-                                <SelectTrigger className="w-24">
+                                <SelectTrigger className="w-20 text-xs">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -965,15 +978,15 @@ const Admin = () => {
         ) : (
           // Regular admin view - only products
           <div>
-            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-8">
+            <div className="flex flex-col gap-4 mb-8">
               <div>
                 <h2 className="text-2xl font-bold">Manage Products</h2>
                 <p className="text-muted-foreground">View and manage your product inventory</p>
               </div>
               
               {/* Search and Filter Controls */}
-              <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-                <div className="flex-1 lg:w-64">
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <div className="flex-1 min-w-0">
                   <Input
                     placeholder="Search products..."
                     value={searchTerm}
@@ -982,7 +995,7 @@ const Admin = () => {
                   />
                 </div>
                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-full sm:w-40">
+                  <SelectTrigger className="w-full sm:w-[160px]">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -995,7 +1008,7 @@ const Admin = () => {
                 </Select>
                 <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
                   <DialogTrigger asChild>
-                    <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 w-full sm:w-auto">
+                    <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 w-full sm:w-auto whitespace-nowrap">
                       <PlusCircle className="h-4 w-4" />
                       Add Product
                     </Button>
@@ -1292,7 +1305,8 @@ const Admin = () => {
                 )}
               </div>
             </div>
-          )}
+          </div>
+        )}
       </div>
 
       {/* Image Preview Dialog */}
