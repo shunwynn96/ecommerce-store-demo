@@ -11,11 +11,13 @@ interface Product {
   price: number;
   image_url: string;
   stock: number;
+  category: string;
 }
 
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   useEffect(() => {
     fetchProducts();
@@ -40,6 +42,11 @@ const Products = () => {
     }
   };
 
+  const categories = ['all', ...new Set(products.map(product => product.category))];
+  const filteredProducts = selectedCategory === 'all' 
+    ? products 
+    : products.filter(product => product.category === selectedCategory);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -53,13 +60,30 @@ const Products = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-4">Our Products</h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-lg mb-6">
             Discover our collection of high-quality tech products
           </p>
+          
+          {/* Category Filter */}
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedCategory === category
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                {category.charAt(0).toUpperCase() + category.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
             <Link key={product.id} to={`/products/${product.id}`}>
               <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader className="p-0">

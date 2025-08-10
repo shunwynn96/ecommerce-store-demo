@@ -106,10 +106,50 @@ const Admin = () => {
       if (error) {
         console.error('Error fetching users:', error);
         toast.error('Failed to fetch users');
-      } else {
-        console.log('Fetched users:', data); // Debug log
-        setUsers(data || []);
+        return;
       }
+
+      // Add demo users for visual display (all with user role)
+      const demoUsers = [
+        {
+          id: 'demo-1',
+          user_id: 'demo-user-1',
+          email: 'demo1@example.com (Demo)',
+          role: 'user' as const,
+          created_at: '2024-01-15T10:30:00Z'
+        },
+        {
+          id: 'demo-2',
+          user_id: 'demo-user-2',
+          email: 'demo2@example.com (Demo)',
+          role: 'user' as const,
+          created_at: '2024-01-16T14:22:00Z'
+        },
+        {
+          id: 'demo-3',
+          user_id: 'demo-user-3',
+          email: 'demo3@example.com (Demo)',
+          role: 'user' as const,
+          created_at: '2024-01-17T09:15:00Z'
+        },
+        {
+          id: 'demo-4',
+          user_id: 'demo-user-4',
+          email: 'demo4@example.com (Demo)',
+          role: 'user' as const,
+          created_at: '2024-01-18T16:45:00Z'
+        },
+        {
+          id: 'demo-5',
+          user_id: 'demo-user-5',
+          email: 'demo5@example.com (Demo)',
+          role: 'user' as const,
+          created_at: '2024-01-19T11:30:00Z'
+        }
+      ];
+
+      // Combine real users with demo users
+      setUsers([...(data || []), ...demoUsers]);
     } catch (error) {
       console.error('Error:', error);
       toast.error('An error occurred while fetching users');
@@ -117,6 +157,12 @@ const Admin = () => {
   };
 
   const updateUserRole = async (userId: string, newRole: 'user' | 'admin' | 'super_admin') => {
+    // Prevent updating demo users
+    if (userId.startsWith('demo-user-')) {
+      toast.error('Cannot update demo user roles');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('profiles')
@@ -133,53 +179,6 @@ const Admin = () => {
     }
   };
 
-  const createDemoAccounts = async () => {
-    try {
-      const demoAccounts = [
-        { email: 'demo1@example.com', password: 'demo123' },
-        { email: 'demo2@example.com', password: 'demo123' },
-        { email: 'demo3@example.com', password: 'demo123' },
-        { email: 'demo4@example.com', password: 'demo123' },
-        { email: 'demo5@example.com', password: 'demo123' },
-      ];
-
-      for (const account of demoAccounts) {
-        // Check if account already exists
-        const { data: existingProfile } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('email', account.email)
-          .single();
-
-        if (existingProfile) {
-          console.log(`Demo account ${account.email} already exists`);
-          continue;
-        }
-
-        // Create the auth user
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: account.email,
-          password: account.password,
-          options: {
-            emailRedirectTo: undefined, // Skip email confirmation
-          }
-        });
-
-        if (authError) {
-          console.error(`Error creating demo account ${account.email}:`, authError);
-          continue;
-        }
-
-        console.log(`Created demo account: ${account.email}`);
-      }
-
-      toast.success('Demo accounts created successfully! Emails: demo1-demo5@example.com, Password: demo123');
-      fetchUsers();
-    } catch (error) {
-      console.error('Error creating demo accounts:', error);
-      toast.error('Failed to create demo accounts');
-    }
-  };
 
   const fetchProducts = async () => {
     try {
@@ -847,10 +846,6 @@ const Admin = () => {
                     <h2 className="text-2xl font-bold">User Management</h2>
                     <p className="text-muted-foreground">Manage user accounts and roles</p>
                   </div>
-                  <Button onClick={createDemoAccounts} className="flex items-center gap-2 w-full lg:w-auto">
-                    <Users className="h-4 w-4" />
-                    Create Demo Accounts
-                  </Button>
                 </div>
               </div>
               <div className="grid gap-6 md:grid-cols-2">
