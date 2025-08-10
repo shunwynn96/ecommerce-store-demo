@@ -16,15 +16,6 @@ const Checkout = () => {
   const navigate = useNavigate();
 
   const handlePayment = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to complete your purchase",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (items.length === 0) {
       toast({
         title: "Cart is empty",
@@ -37,20 +28,46 @@ const Checkout = () => {
     setProcessing(true);
 
     try {
-      // Create checkout session
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { cartItems: items },
-      });
+      if (!user) {
+        // Demo mode - create checkout with guest email
+        const demoItems = items.map(item => ({
+          ...item,
+          user_id: 'demo-user',
+        }));
+        
+        const { data, error } = await supabase.functions.invoke('create-checkout', {
+          body: { 
+            cartItems: demoItems,
+            isDemo: true 
+          },
+        });
 
-      if (error) {
-        throw error;
-      }
+        if (error) {
+          throw error;
+        }
 
-      if (data?.url) {
-        // Open Stripe checkout in a new tab
-        window.open(data.url, '_blank');
+        if (data?.url) {
+          // Open Stripe checkout in a new tab
+          window.open(data.url, '_blank');
+        } else {
+          throw new Error('No checkout URL received');
+        }
       } else {
-        throw new Error('No checkout URL received');
+        // Regular user checkout
+        const { data, error } = await supabase.functions.invoke('create-checkout', {
+          body: { cartItems: items },
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        if (data?.url) {
+          // Open Stripe checkout in a new tab
+          window.open(data.url, '_blank');
+        } else {
+          throw new Error('No checkout URL received');
+        }
       }
     } catch (error) {
       console.error('Error creating checkout session:', error);
@@ -64,20 +81,6 @@ const Checkout = () => {
     }
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <CreditCard className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-            <h1 className="text-3xl font-bold mb-4">Checkout</h1>
-            <p className="text-muted-foreground mb-6">Please log in to complete your purchase</p>
-            <Button onClick={() => navigate('/auth')}>Sign In</Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (items.length === 0) {
     return (
@@ -160,6 +163,13 @@ const Checkout = () => {
                 </div>
                 
                 <div className="space-y-4">
+                  {!user && (
+                    <div className="bg-muted p-3 rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Demo Mode:</strong> You're checking out as a guest. Sign in for a full account experience.
+                      </p>
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     You will be redirected to Stripe to complete your payment securely.
                   </p>
@@ -175,7 +185,7 @@ const Checkout = () => {
                     ) : (
                       <>
                         <CreditCard className="mr-2 h-4 w-4" />
-                        Pay Now - ${totalPrice.toFixed(2)}
+                        {!user ? 'Pay Now (Demo) - ' : 'Pay Now - '}${totalPrice.toFixed(2)}
                       </>
                     )}
                   </Button>

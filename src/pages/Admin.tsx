@@ -164,7 +164,7 @@ const Admin = () => {
 
   const updateUserRole = async (userId: string, newRole: 'user' | 'admin' | 'super_admin') => {
     // Prevent edits in demo mode
-    if (!user || userRole === 'demo') {
+    if (isDemoMode) {
       toast.error('Demo mode: Editing is disabled. Please log in as an admin to make changes.');
       return;
     }
@@ -942,10 +942,10 @@ const Admin = () => {
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <Badge variant="outline" className="text-xs">User</Badge>
-                              <Select 
-                                value={user.role} 
-                                onValueChange={(value: 'user' | 'admin' | 'super_admin') => isDemoMode ? toast.error('Demo mode: Editing is disabled. Please log in as an admin to make changes.') : updateUserRole(user.user_id, value)}
-                                disabled={user.user_id.startsWith('demo-user-') || isDemoMode}
+                               <Select 
+                                 value={user.role} 
+                                 onValueChange={(value: 'user' | 'admin' | 'super_admin') => updateUserRole(user.user_id, value)}
+                                 disabled={user.user_id.startsWith('demo-user-')}
                               >
                                 <SelectTrigger className="w-20 text-xs">
                                   <SelectValue />
@@ -991,9 +991,9 @@ const Admin = () => {
                               <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'} className="text-xs">
                                 {user.role === 'super_admin' ? 'Super Admin' : 'Admin'}
                               </Badge>
-                              <Select 
-                                value={user.role} 
-                                onValueChange={(value: 'user' | 'admin' | 'super_admin') => updateUserRole(user.user_id, value)}
+                               <Select 
+                                 value={user.role} 
+                                 onValueChange={(value: 'user' | 'admin' | 'super_admin') => updateUserRole(user.user_id, value)}
                               >
                                 <SelectTrigger className="w-20 text-xs">
                                   <SelectValue />

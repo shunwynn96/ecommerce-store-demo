@@ -229,17 +229,17 @@ const ProductDetail = () => {
               <div className="flex space-x-4">
                 <Button
                   onClick={handleAddToCart}
-                  disabled={product.stock === 0 || !user}
+                  disabled={product.stock === 0}
                   className="flex-1"
                   size="lg"
                 >
                   <ShoppingCart className="mr-2 h-4 w-4" />
-                  {!user ? 'Login to Add to Cart' : product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
+                  {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
                 </Button>
                 {!user && (
                   <Link to="/auth">
                     <Button variant="outline" size="lg">
-                      Sign In
+                      Sign In for Full Features
                     </Button>
                   </Link>
                 )}

@@ -67,22 +67,20 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center space-x-2 md:space-x-4">
-            {/* Cart Icon */}
-            {user && (
-              <Link to="/cart" className="relative">
-                <Button variant="ghost" size="icon" className="h-9 w-9">
-                  <ShoppingCart className="h-4 w-4 md:h-5 md:w-5" />
-                  {totalItems > 0 && (
-                    <Badge 
-                      variant="destructive" 
-                      className="absolute -top-2 -right-2 h-4 w-4 md:h-5 md:w-5 flex items-center justify-center p-0 text-xs"
-                    >
-                      {totalItems}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
-            )}
+            {/* Cart Icon - Show for all users (demo and authenticated) */}
+            <Link to="/cart" className="relative">
+              <Button variant="ghost" size="icon" className="h-9 w-9">
+                <ShoppingCart className="h-4 w-4 md:h-5 md:w-5" />
+                {totalItems > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-2 -right-2 h-4 w-4 md:h-5 md:w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    {totalItems}
+                  </Badge>
+                )}
+              </Button>
+            </Link>
             
             {/* Desktop User Menu */}
             {user ? (

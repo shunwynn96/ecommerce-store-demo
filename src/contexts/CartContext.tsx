@@ -46,7 +46,37 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchCartItems = async () => {
     if (!user) {
-      setItems([]);
+      // Load demo cart from localStorage
+      const demoCart = localStorage.getItem('demo-cart');
+      if (demoCart) {
+        try {
+          const demoItems = JSON.parse(demoCart);
+          // Fetch product details for demo items
+          const productIds = demoItems.map((item: any) => item.product_id);
+          const { data: products } = await supabase
+            .from('products')
+            .select('id, name, price, image_url, stock')
+            .in('id', productIds);
+          
+          if (products) {
+            const formattedItems = demoItems.map((item: any) => {
+              const product = products.find(p => p.id === item.product_id);
+              return {
+                id: item.id,
+                product_id: item.product_id,
+                quantity: item.quantity,
+                products: product
+              };
+            }).filter((item: any) => item.products);
+            setItems(formattedItems);
+          }
+        } catch (error) {
+          console.error('Error loading demo cart:', error);
+          setItems([]);
+        }
+      } else {
+        setItems([]);
+      }
       setLoading(false);
       return;
     }
@@ -87,11 +117,30 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addToCart = async (productId: string, quantity = 1) => {
     if (!user) {
-      toast({
-        title: "Please log in",
-        description: "You need to be logged in to add items to cart",
-        variant: "destructive",
-      });
+      // Demo mode - use localStorage
+      try {
+        const demoCart = JSON.parse(localStorage.getItem('demo-cart') || '[]');
+        const existingItemIndex = demoCart.findIndex((item: any) => item.product_id === productId);
+        
+        if (existingItemIndex >= 0) {
+          demoCart[existingItemIndex].quantity += quantity;
+        } else {
+          demoCart.push({
+            id: `demo-${Date.now()}-${Math.random()}`,
+            product_id: productId,
+            quantity,
+          });
+        }
+        
+        localStorage.setItem('demo-cart', JSON.stringify(demoCart));
+        toast({
+          title: "Added to cart (Demo Mode)",
+          description: "Item has been added to your demo cart",
+        });
+        await fetchCartItems();
+      } catch (error) {
+        console.error('Error adding to demo cart:', error);
+      }
       return;
     }
 
@@ -139,6 +188,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      if (!user) {
+        // Demo mode - update localStorage
+        const demoCart = JSON.parse(localStorage.getItem('demo-cart') || '[]');
+        const itemIndex = demoCart.findIndex((item: any) => item.id === itemId);
+        if (itemIndex >= 0) {
+          demoCart[itemIndex].quantity = quantity;
+          localStorage.setItem('demo-cart', JSON.stringify(demoCart));
+          await fetchCartItems();
+        }
+        return;
+      }
+
       const { error } = await supabase
         .from('cart_items')
         .update({ quantity })
@@ -161,6 +222,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const removeFromCart = async (itemId: string) => {
     try {
+      if (!user) {
+        // Demo mode - update localStorage
+        const demoCart = JSON.parse(localStorage.getItem('demo-cart') || '[]');
+        const updatedCart = demoCart.filter((item: any) => item.id !== itemId);
+        localStorage.setItem('demo-cart', JSON.stringify(updatedCart));
+        toast({
+          title: "Item removed (Demo Mode)",
+          description: "Item has been removed from your demo cart",
+        });
+        await fetchCartItems();
+        return;
+      }
+
       const { error } = await supabase
         .from('cart_items')
         .delete()
@@ -186,7 +260,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const clearCart = async () => {
-    if (!user) return;
+    if (!user) {
+      // Demo mode - clear localStorage
+      localStorage.removeItem('demo-cart');
+      setItems([]);
+      return;
+    }
 
     try {
       const { error } = await supabase

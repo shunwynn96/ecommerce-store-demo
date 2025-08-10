@@ -10,22 +10,6 @@ const Cart = () => {
   const { items, loading, updateQuantity, removeFromCart, totalPrice, totalItems } = useCart();
   const { user } = useAuth();
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <ShoppingBag className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-            <h1 className="text-3xl font-bold mb-4">Your Cart</h1>
-            <p className="text-muted-foreground mb-6">Please log in to view your cart</p>
-            <Link to="/auth">
-              <Button>Sign In</Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (loading) {
     return (

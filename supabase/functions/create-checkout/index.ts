@@ -18,17 +18,23 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
     );
 
-    // Get authenticated user
-    const authHeader = req.headers.get("Authorization")!;
-    const token = authHeader.replace("Bearer ", "");
-    const { data } = await supabaseClient.auth.getUser(token);
-    const user = data.user;
-    
-    if (!user?.email) {
-      throw new Error("User not authenticated");
-    }
+    const { cartItems, isDemo } = await req.json();
 
-    const { cartItems } = await req.json();
+    let user = null;
+    let customerEmail = "guest@example.com"; // Default for demo mode
+
+    if (!isDemo) {
+      // Get authenticated user for regular checkout
+      const authHeader = req.headers.get("Authorization")!;
+      const token = authHeader.replace("Bearer ", "");
+      const { data } = await supabaseClient.auth.getUser(token);
+      user = data.user;
+      
+      if (!user?.email) {
+        throw new Error("User not authenticated");
+      }
+      customerEmail = user.email;
+    }
 
     if (!cartItems || cartItems.length === 0) {
       throw new Error("No cart items provided");
@@ -60,14 +66,15 @@ serve(async (req) => {
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
-      customer_email: user.email,
+      customer_email: customerEmail,
       line_items: lineItems,
       mode: "payment",
       success_url: `${req.headers.get("origin")}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get("origin")}/cart`,
       metadata: {
-        user_id: user.id,
+        user_id: user?.id || 'demo-user',
         total_amount: totalAmount.toString(),
+        is_demo: isDemo ? 'true' : 'false',
       },
     });
 
