@@ -15,6 +15,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ImageUpload } from '@/components/ImageUpload';
+import { MultiImageUpload } from '@/components/MultiImageUpload';
 
 interface Product {
   id: string;
@@ -658,132 +660,27 @@ const Admin = () => {
                           </Select>
                         </div>
 
-                        <div>
-                          <Label htmlFor="image_url">Main Image URL *</Label>
-                          <div className="flex items-center space-x-2">
-                            <Input
-                              id="image_url"
-                              value={formData.image_url}
-                              onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                              placeholder="https://example.com/main-image.jpg"
-                              className="flex-1"
-                            />
-                             {formData.image_url && (
-                               <img
-                                 src={formData.image_url}
-                                 alt="Main image preview"
-                                 className="h-10 w-16 object-cover rounded border border-border cursor-pointer hover:opacity-80 transition-opacity"
-                                 onClick={() => setImageDialogSrc(formData.image_url)}
-                                 onError={(e) => {
-                                   e.currentTarget.style.display = 'none';
-                                 }}
-                               />
-                             )}
-                          </div>
-                        </div>
+                        <ImageUpload
+                          value={formData.image_url}
+                          onChange={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
+                          label="Main Image"
+                          placeholder="https://example.com/main-image.jpg"
+                          required
+                        />
 
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <Label>Additional Images</Label>
-                            <Button type="button" variant="outline" size="sm" onClick={addImageInput}>
-                              <PlusCircle className="h-4 w-4 mr-1" />
-                              Add Image
-                            </Button>
-                          </div>
-                          <div className="space-y-2">
-                            {additionalImages.map((image, index) => (
-                              <div 
-                                key={index} 
-                                className={`
-                                  flex gap-2 items-center p-3 rounded-lg border transition-all duration-200 ease-in-out
-                                  ${draggedIndex === index 
-                                    ? 'opacity-50 scale-105 bg-primary/10 border-primary shadow-lg transform rotate-1' 
-                                    : dragOverIndex === index && draggedIndex !== null && draggedIndex !== index
-                                    ? 'bg-primary/5 border-primary/50 scale-102 shadow-md animate-pulse'
-                                    : 'bg-background hover:bg-muted/30 hover:scale-101 hover:shadow-sm'
-                                  }
-                                  ${draggedIndex !== null && draggedIndex !== index ? 'animate-fade-in' : ''}
-                                `}
-                                style={{
-                                  transform: draggedIndex === index ? 'scale(1.02) rotate(1deg)' : 'scale(1)',
-                                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                  boxShadow: draggedIndex === index ? '0 8px 25px rgba(0,0,0,0.15)' : undefined
-                                }}
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, index)}
-                                onDragEnter={(e) => handleDragEnter(e, index)}
-                                onDragLeave={handleDragLeave}
-                                onDragOver={handleDragOver}
-                                onDragEnd={handleDragEnd}
-                                onDrop={(e) => handleDrop(e, index)}
-                              >
-                                <div className={`
-                                  flex items-center transition-transform duration-150
-                                  ${draggedIndex === index 
-                                    ? 'cursor-grabbing scale-110' 
-                                    : 'cursor-grab hover:scale-105'
-                                  }
-                                `}>
-                                  <GripVertical className={`
-                                    h-4 w-4 transition-colors duration-150
-                                    ${draggedIndex === index 
-                                      ? 'text-primary' 
-                                      : 'text-muted-foreground hover:text-foreground'
-                                    }
-                                  `} />
-                                </div>
-                                <span className={`
-                                  text-sm font-medium w-8 transition-colors duration-150
-                                  ${draggedIndex === index 
-                                    ? 'text-primary' 
-                                    : 'text-muted-foreground'
-                                  }
-                                `}>
-                                  #{index + 1}
-                                </span>
-                                <div className="flex-1 flex items-center space-x-2">
-                                  <Input
-                                    value={image}
-                                    onChange={(e) => updateImageInput(index, e.target.value)}
-                                    placeholder={`https://example.com/image${index + 1}.jpg`}
-                                    className={`
-                                      flex-1 transition-all duration-150
-                                      ${draggedIndex === index 
-                                        ? 'border-primary/50 bg-primary/5' 
-                                        : ''
-                                      }
-                                    `}
-                                  />
-                                   {image && (
-                                     <img
-                                       src={image}
-                                       alt={`Additional image ${index + 1} preview`}
-                                       className="h-10 w-16 object-cover rounded border border-border cursor-pointer hover:opacity-80 transition-opacity"
-                                       onClick={() => setImageDialogSrc(image)}
-                                       onError={(e) => {
-                                         e.currentTarget.style.display = 'none';
-                                       }}
-                                     />
-                                   )}
-                                </div>
-                                {additionalImages.length > 1 && (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => removeImageInput(index)}
-                                    className="hover-scale transition-all duration-150 hover:bg-destructive/10 hover:border-destructive/50"
-                                  >
-                                    <Trash2 className="h-4 w-4 hover:text-destructive transition-colors duration-150" />
-                                  </Button>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Drag and drop to reorder images. The main image above will be the primary photo.
-                          </p>
-                        </div>
+                        <MultiImageUpload
+                          images={additionalImages}
+                          onImagesChange={setAdditionalImages}
+                          onDragStart={handleDragStart}
+                          onDragEnter={handleDragEnter}
+                          onDragLeave={handleDragLeave}
+                          onDragOver={handleDragOver}
+                          onDragEnd={handleDragEnd}
+                          onDrop={handleDrop}
+                          draggedIndex={draggedIndex}
+                          dragOverIndex={dragOverIndex}
+                          onImageClick={setImageDialogSrc}
+                        />
 
                         <div className="flex gap-4">
                           <Button type="submit" className="flex-1">

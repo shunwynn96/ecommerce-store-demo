@@ -50,7 +50,7 @@ const Navbar = () => {
             </Link>
             
             {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center space-x-6 ml-8">
+            <div className="hidden md:flex items-center space-x-6 ml-8">
               <Link 
                 to="/" 
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center"
