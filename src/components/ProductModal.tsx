@@ -209,12 +209,14 @@ const ProductModal = ({ productId, open, onOpenChange }: ProductModalProps) => {
                       <span className="text-4xl font-bold text-gradient">
                         ${product.price}
                       </span>
-                      <Badge 
-                        variant={product.stock > 0 ? "default" : "secondary"}
-                        className={product.stock > 0 ? "animate-bounce-gentle" : ""}
-                      >
-                        {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-                      </Badge>
+                      {product.stock <= 10 && (
+                        <Badge 
+                          variant={product.stock > 0 ? (product.stock <= 5 ? "destructive" : "secondary") : "secondary"}
+                          className={`${product.stock > 0 && product.stock <= 5 ? "animate-pulse" : ""} text-xs`}
+                        >
+                          {product.stock === 0 ? 'Out of stock' : `Only ${product.stock} left`}
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="space-y-4">

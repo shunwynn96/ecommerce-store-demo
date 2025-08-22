@@ -198,9 +198,14 @@ const ProductDetail = () => {
               <span className="text-4xl font-bold text-primary">
                 ${product.price}
               </span>
-              <Badge variant={product.stock > 0 ? "default" : "secondary"}>
-                {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-              </Badge>
+              {product.stock <= 10 && (
+                <Badge 
+                  variant={product.stock > 0 ? (product.stock <= 5 ? "destructive" : "secondary") : "secondary"}
+                  className={`${product.stock > 0 && product.stock <= 5 ? "animate-pulse" : ""} text-xs`}
+                >
+                  {product.stock === 0 ? 'Out of stock' : `Only ${product.stock} left`}
+                </Badge>
+              )}
             </div>
 
             <div className="space-y-4">
@@ -284,9 +289,14 @@ const ProductDetail = () => {
                         <span className="text-xl font-bold text-primary">
                           ${rec.price}
                         </span>
-                        <Badge variant={rec.stock > 0 ? "default" : "secondary"}>
-                          {rec.stock > 0 ? `${rec.stock} in stock` : 'Out of stock'}
-                        </Badge>
+                        {rec.stock <= 10 && (
+                          <Badge 
+                            variant={rec.stock > 0 ? (rec.stock <= 5 ? "destructive" : "secondary") : "secondary"}
+                            className={`${rec.stock > 0 && rec.stock <= 5 ? "animate-pulse" : ""} text-xs`}
+                          >
+                            {rec.stock === 0 ? 'Out of stock' : `Only ${rec.stock} left`}
+                          </Badge>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

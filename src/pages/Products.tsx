@@ -267,23 +267,27 @@ const Products = () => {
                     />
                   </div>
                 </CardHeader>
-                <CardContent className={`p-4 ${viewMode === 'list' ? 'flex-1' : ''}`}>
-                  <CardTitle className="text-lg mb-2 line-clamp-2 hover:text-primary transition-colors">
-                    {product.name}
-                  </CardTitle>
-                  <CardDescription className="mb-3 line-clamp-2">
-                    {product.description}
-                  </CardDescription>
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold text-gradient">
+                <CardContent className={`p-4 flex flex-col ${viewMode === 'list' ? 'flex-1' : ''}`}>
+                  <div className="flex-1">
+                    <CardTitle className="text-lg mb-2 line-clamp-2 hover:text-primary transition-colors">
+                      {product.name}
+                    </CardTitle>
+                    <CardDescription className="mb-3 line-clamp-2">
+                      {product.description}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center justify-between mt-auto pt-2">
+                    <span className="text-2xl font-bold text-primary">
                       ${product.price}
                     </span>
-                    <Badge 
-                      variant={product.stock > 0 ? "default" : "secondary"}
-                      className={product.stock > 0 ? "animate-bounce-gentle" : ""}
-                    >
-                      {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-                    </Badge>
+                    {product.stock <= 10 && (
+                      <Badge 
+                        variant={product.stock > 0 ? (product.stock <= 5 ? "destructive" : "secondary") : "secondary"}
+                        className={`${product.stock > 0 && product.stock <= 5 ? "animate-pulse" : ""} text-xs`}
+                      >
+                        {product.stock === 0 ? 'Out of stock' : `Only ${product.stock} left`}
+                      </Badge>
+                    )}
                   </div>
                 </CardContent>
               </Card>

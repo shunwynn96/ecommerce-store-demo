@@ -9,17 +9,17 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "gradient-primary text-white hover:shadow-glow hover:scale-105 active:scale-95 shadow-card",
+        default: "bg-primary-soft text-white hover:bg-primary hover:shadow-glow hover:scale-105 active:scale-95 shadow-card backdrop-blur-sm",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:shadow-card",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground hover:border-primary/50 hover:shadow-card",
+          "border border-input bg-background hover:bg-primary-subtle hover:text-primary hover:border-primary/50 hover:shadow-card",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:shadow-card",
-        ghost: "hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95",
+        ghost: "hover:bg-primary-subtle hover:text-primary hover:scale-105 active:scale-95",
         link: "text-primary underline-offset-4 hover:underline hover:text-primary-glow",
-        premium: "gradient-primary text-white shadow-glow hover:shadow-elegant hover:scale-105 active:scale-95 border border-primary-glow/20",
-        accent: "bg-accent text-accent-foreground hover:bg-accent/90 hover:shadow-glow hover:scale-105 active:scale-95",
+        premium: "bg-primary-soft text-white shadow-glow hover:bg-primary hover:shadow-elegant hover:scale-105 active:scale-95 border border-primary-glow/20 backdrop-blur-sm",
+        accent: "bg-accent-soft text-white hover:bg-accent hover:shadow-glow hover:scale-105 active:scale-95 backdrop-blur-sm",
       },
       size: {
         default: "h-10 px-4 py-2",

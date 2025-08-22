@@ -189,7 +189,7 @@ const Index = () => {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <Link to={`/product/${product.id}`}>
+                    <Link to={`/products/${product.id}`}>
                       <Button className="w-full group-hover:shadow-glow transition-all">
                         View Details
                         <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />

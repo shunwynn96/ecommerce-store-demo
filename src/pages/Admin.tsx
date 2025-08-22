@@ -51,6 +51,8 @@ const Admin = () => {
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [adminSearchTerm, setAdminSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -452,6 +454,17 @@ const Admin = () => {
     return matchesSearch && matchesCategory;
   });
 
+  // Filter users based on search terms
+  const filteredUsers = users.filter(user => user.role === 'user' && (
+    user.email.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+    user.user_id.toLowerCase().includes(userSearchTerm.toLowerCase())
+  ));
+
+  const filteredAdmins = users.filter(user => ['admin', 'super_admin'].includes(user.role) && (
+    user.email.toLowerCase().includes(adminSearchTerm.toLowerCase()) ||
+    user.user_id.toLowerCase().includes(adminSearchTerm.toLowerCase())
+  ));
+
   // Demo mode check
   const isDemoMode = !user || userRole === 'demo';
 
@@ -710,30 +723,30 @@ const Admin = () => {
                   </Card>
                 ) : (
                   filteredProducts.map((product) => (
-                    <Card key={product.id}>
-                      <CardContent className="p-4">
+                    <Card key={product.id} className="transition-all hover:shadow-md border-muted/40">
+                      <CardContent className="p-3">
                         <div className="grid grid-cols-4 gap-3 items-center">
                           {/* Column 1: Title */}
                           <div className="col-span-4 sm:col-span-1 min-w-0">
-                            <h3 className="font-semibold text-sm sm:text-base truncate">{product.name}</h3>
+                            <h3 className="font-medium text-sm sm:text-base truncate text-foreground">{product.name}</h3>
                             <p className="text-xs text-muted-foreground truncate sm:hidden">{product.description}</p>
                             <p className="text-xs text-muted-foreground line-clamp-2 hidden sm:block">{product.description}</p>
                           </div>
 
                           {/* Column 2: Category & Image */}
-                          <div className="col-span-2 sm:col-span-1 flex items-center gap-2">
+                          <div className="col-span-2 sm:col-span-1 flex items-center gap-3">
                             <div className="flex flex-col gap-1">
                               {product.category && (
-                                <Badge variant="secondary" className="text-xs">
+                                <div className="px-2 py-1 rounded-full bg-muted/50 text-xs font-medium text-muted-foreground">
                                   {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
-                                </Badge>
+                                </div>
                               )}
                             </div>
                             {product.image_url && (
                               <img
                                 src={product.image_url}
                                 alt={product.name}
-                                className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded border"
+                                className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded-lg border border-muted/50 cursor-pointer hover:opacity-80 transition-opacity"
                                 onClick={() => setImageDialogSrc(product.image_url)}
                                 onError={(e) => {
                                   e.currentTarget.style.display = 'none';
@@ -743,36 +756,34 @@ const Admin = () => {
                           </div>
 
                           {/* Column 3: Price & Stock */}
-                          <div className="col-span-2 sm:col-span-1 flex flex-col gap-1">
-                            <Badge variant="outline" className="text-xs font-semibold w-fit">
+                          <div className="col-span-2 sm:col-span-1 flex flex-col gap-1.5">
+                            <div className="text-sm font-semibold text-primary">
                               ${product.price}
-                            </Badge>
-                            <Badge variant={product.stock > 0 ? "default" : "secondary"} className="text-xs w-fit">
+                            </div>
+                            <div className={`text-xs font-medium ${product.stock > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
                               {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-                            </Badge>
+                            </div>
                           </div>
 
                           {/* Column 4: Actions */}
-                          <div className="col-span-4 sm:col-span-1 flex gap-1 sm:gap-2 sm:flex-col sm:items-end sm:ml-auto">
+                          <div className="col-span-4 sm:col-span-1 flex gap-2 sm:flex-col sm:items-end sm:ml-auto">
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
                               onClick={() => handleEdit(product)}
-                              className="flex-1 sm:flex-none sm:w-20 text-xs px-2 py-1 sm:px-2 sm:py-1"
+                              className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary transition-colors"
                             >
-                              <Edit className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                              <span className="hidden sm:inline">Edit</span>
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                               <AlertDialogTrigger asChild>
                                 <Button
-                                  variant="destructive"
+                                  variant="ghost"
                                   size="sm"
                                   onClick={() => handleDeleteClick(product.id)}
-                                  className="flex-1 sm:flex-none sm:w-20 text-xs px-2 py-1 sm:px-2 sm:py-1"
+                                  className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors"
                                 >
-                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                                  <span className="hidden sm:inline">Delete</span>
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent className="sm:max-w-md">
@@ -825,37 +836,51 @@ const Admin = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
+                      <div className="mb-4">
+                        <Input
+                          placeholder="Search users by email or ID..."
+                          value={userSearchTerm}
+                          onChange={(e) => setUserSearchTerm(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
                       <div className="space-y-4">
-                        {users.filter(user => user.role === 'user').map((user) => (
-                          <div key={user.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 border rounded-lg">
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium truncate">{user.email}</div>
-                              <div className="text-sm text-muted-foreground">
-                                User ID: {user.user_id.slice(0, 8)}...
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Created: {new Date(user.created_at).toLocaleDateString()}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <Badge variant="outline" className="text-xs">User</Badge>
-                               <Select 
-                                 value={user.role} 
-                                 onValueChange={(value: 'user' | 'admin' | 'super_admin') => updateUserRole(user.user_id, value)}
-                                 disabled={user.user_id.startsWith('demo-user-')}
-                              >
-                                <SelectTrigger className="w-20 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="user">User</SelectItem>
-                                  <SelectItem value="admin">Admin</SelectItem>
-                                  <SelectItem value="super_admin">Super Admin</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                        {filteredUsers.length === 0 ? (
+                          <div className="text-center py-4 text-muted-foreground">
+                            {userSearchTerm ? 'No users match your search.' : 'No users found.'}
                           </div>
-                        ))}
+                        ) : (
+                          filteredUsers.map((user) => (
+                            <div key={user.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 border rounded-lg">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium truncate">{user.email}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  User ID: {user.user_id.slice(0, 8)}...
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Created: {new Date(user.created_at).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <Badge variant="outline" className="text-xs">User</Badge>
+                                 <Select 
+                                   value={user.role} 
+                                   onValueChange={(value: 'user' | 'admin' | 'super_admin') => updateUserRole(user.user_id, value)}
+                                   disabled={user.user_id.startsWith('demo-user-')}
+                                >
+                                  <SelectTrigger className="w-20 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="user">User</SelectItem>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                    <SelectItem value="super_admin">Super Admin</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -872,38 +897,52 @@ const Admin = () => {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
+                      <div className="mb-4">
+                        <Input
+                          placeholder="Search administrators by email or ID..."
+                          value={adminSearchTerm}
+                          onChange={(e) => setAdminSearchTerm(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
                       <div className="space-y-4">
-                        {users.filter(user => ['admin', 'super_admin'].includes(user.role)).map((user) => (
-                          <div key={user.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 border rounded-lg">
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium truncate">{user.email}</div>
-                              <div className="text-sm text-muted-foreground">
-                                User ID: {user.user_id.slice(0, 8)}...
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Created: {new Date(user.created_at).toLocaleDateString()}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'} className="text-xs">
-                                {user.role === 'super_admin' ? 'Super Admin' : 'Admin'}
-                              </Badge>
-                               <Select 
-                                 value={user.role} 
-                                 onValueChange={(value: 'user' | 'admin' | 'super_admin') => updateUserRole(user.user_id, value)}
-                              >
-                                <SelectTrigger className="w-20 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="user">User</SelectItem>
-                                  <SelectItem value="admin">Admin</SelectItem>
-                                  <SelectItem value="super_admin">Super Admin</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                        {filteredAdmins.length === 0 ? (
+                          <div className="text-center py-4 text-muted-foreground">
+                            {adminSearchTerm ? 'No administrators match your search.' : 'No administrators found.'}
                           </div>
-                        ))}
+                        ) : (
+                          filteredAdmins.map((user) => (
+                            <div key={user.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 border rounded-lg">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium truncate">{user.email}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  User ID: {user.user_id.slice(0, 8)}...
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Created: {new Date(user.created_at).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'} className="text-xs">
+                                  {user.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                                </Badge>
+                                 <Select 
+                                   value={user.role} 
+                                   onValueChange={(value: 'user' | 'admin' | 'super_admin') => updateUserRole(user.user_id, value)}
+                                >
+                                  <SelectTrigger className="w-20 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="user">User</SelectItem>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                    <SelectItem value="super_admin">Super Admin</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -921,17 +960,17 @@ const Admin = () => {
               </div>
               
               {/* Search and Filter Controls */}
-              <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <div className="flex flex-col sm:flex-row gap-2 w-full">
                 <div className="flex-1 min-w-0">
                   <Input
                     placeholder="Search products..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full"
+                    className="w-full border-muted/50 focus:border-primary/50"
                   />
                 </div>
                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-full sm:w-[160px]">
+                  <SelectTrigger className="w-full sm:w-[140px] border-muted/50">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -946,11 +985,12 @@ const Admin = () => {
                   <DialogTrigger asChild>
                     <Button 
                       onClick={() => isDemoMode ? toast.error('Demo mode: Editing is disabled. Please log in as an admin to make changes.') : setShowAddForm(true)} 
-                      className="flex items-center gap-2 w-full sm:w-auto whitespace-nowrap"
+                      className="flex items-center gap-2 w-full sm:w-auto whitespace-nowrap h-10"
                       disabled={isDemoMode}
+                      size="sm"
                     >
                       <PlusCircle className="h-4 w-4" />
-                      Add Product
+                      Add
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
